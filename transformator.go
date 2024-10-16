@@ -9,12 +9,14 @@ import (
 )
 
 type transformatorInput[U comparable] struct {
-	in []U
+	inCh chan U
+	in   []U
 }
 
 type Transformator[U comparable] struct {
 	err   error
 	id    string
+	inCh  chan U
 	in    []U
 	steps []any
 }
@@ -22,6 +24,12 @@ type Transformator[U comparable] struct {
 func Transform[U comparable](in []U) transformatorInput[U] {
 	return transformatorInput[U]{
 		in: in,
+	}
+}
+
+func TransformChan[U comparable](inCh chan U) transformatorInput[U] {
+	return transformatorInput[U]{
+		inCh: inCh,
 	}
 }
 
@@ -35,6 +43,7 @@ func (p transformatorInput[U]) With(steps ...any) Transformator[U] {
 	t := Transformator[U]{
 		id:    createCacheID(),
 		in:    p.in,
+		inCh:  p.inCh,
 		steps: []any{},
 	}
 
@@ -130,7 +139,7 @@ func (t Transformator[U]) AsRange() (func(yield func(i any) bool), error) {
 
 	fns := stepFnCache[t.id]
 	return func(yield func(i any) bool) {
-		for _, i := range t.in {
+		process := func(i U) bool {
 			var in any = i
 			var skipped bool
 			for i, fn := range fns {
@@ -155,9 +164,24 @@ func (t Transformator[U]) AsRange() (func(yield func(i any) bool), error) {
 			}
 
 			if !skipped && !yield(in) {
-				break
+				return true
 			}
 
+			return false
+		}
+
+		if t.inCh != nil {
+			for i := range t.inCh {
+				if process(i) {
+					break
+				}
+			}
+		} else {
+			for _, i := range t.in {
+				if process(i) {
+					break
+				}
+			}
 		}
 	}, nil
 }
