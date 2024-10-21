@@ -1,4 +1,4 @@
-package steps
+package step
 
 import (
 	"crypto/rand"
@@ -8,48 +8,15 @@ import (
 	"strings"
 )
 
-type transformatorInput[U comparable] struct {
-	inCh chan U
-	in   []U
-}
-
-type Transformator[U comparable] struct {
-	err   error
-	id    string
-	inCh  chan U
-	in    []U
-	steps []any
-}
-
-func Transform[U comparable](in []U) transformatorInput[U] {
-	return transformatorInput[U]{
-		in: in,
-	}
-}
-
-func TransformChan[U comparable](inCh chan U) transformatorInput[U] {
-	return transformatorInput[U]{
-		inCh: inCh,
-	}
-}
-
 var (
 	stepPattern            = regexp.MustCompile(`^Step\[(.*),(.*)]$`)
 	binaryInputStepPattern = regexp.MustCompile(`^BinaryInputStep\[(.*),(.*),(.*)]$`)
-	stepFnCache            = map[string][]reflect.Value{}
 )
 
-func (p transformatorInput[U]) With(steps ...any) Transformator[U] {
-	t := Transformator[U]{
-		id:    createCacheID(),
-		in:    p.in,
-		inCh:  p.inCh,
-		steps: []any{},
-	}
-
-	prevOutType := reflect.TypeFor[U]()
-	for pos, step := range steps {
-		stepType := reflect.TypeOf(step)
+func ValidateSteps[T any](t *Transformator) {
+	prevOutType := reflect.TypeFor[T]()
+	for pos, s := range t.Steps {
+		stepType := reflect.TypeOf(s)
 
 		var fnType reflect.Type
 		var out0 reflect.Type
@@ -63,25 +30,23 @@ func (p transformatorInput[U]) With(steps ...any) Transformator[U] {
 		}
 
 		if err != nil {
-			delete(stepFnCache, t.id)
-			t.err = err
-			return t
+			delete(FnCache, t.ID)
+			t.Err = err
+			return
 		}
 
-		stepFn := reflect.ValueOf(step).Convert(fnType)
-
+		stepFn := reflect.ValueOf(s).Convert(fnType)
 		if pos == 0 {
-			stepFnCache[t.id] = []reflect.Value{}
+			FnCache[t.ID] = []Data{} // TODO make
 		}
-		stepFnCache[t.id] = append(stepFnCache[t.id], stepFn)
+		FnCache[t.ID] = append(FnCache[t.ID], Data{
+			Type: fnType,
+			Val:  stepFn,
+		})
 
-		t.steps = append(t.steps, step)
+		t.Steps = append(t.Steps, s)
 		prevOutType = out0
 	}
-
-	fmt.Println("done With")
-
-	return t
 }
 
 func stepParser(pos int, prevOutType reflect.Type, stepType reflect.Type) (reflect.Type, reflect.Type, error) {
@@ -129,67 +94,40 @@ func binaryInputStepParser(pos int, prevOutType reflect.Type, stepType reflect.T
 	return fnType, out0, nil
 }
 
-func (t Transformator[U]) AsRange() (func(yield func(i any) bool), error) {
-	fmt.Println("AsRange")
+func Process[T any](i T, yield func(i any) bool, fns []Data) bool {
+	var in any = i
+	var skipped bool
+	for _, fn := range fns {
+		args := []reflect.Value{reflect.ValueOf(in)}
 
-	if t.err != nil {
-		delete(stepFnCache, t.id)
-		return nil, t.err
+		if fn.Type.NumIn() > 1 {
+			args = append(args, reflect.ValueOf(-1))
+		}
+		res := fn.Val.Call(args)
+		out, skip, err := res[0].Interface(), res[1].Bool(), res[2].Interface()
+		if err != nil {
+			// TODO return error
+		}
+
+		if skip || err != nil {
+			skipped = true
+			break
+		}
+
+		in = out
 	}
 
-	fns := stepFnCache[t.id]
-	return func(yield func(i any) bool) {
-		process := func(i U) bool {
-			var in any = i
-			var skipped bool
-			for i, fn := range fns {
-				args := []reflect.Value{reflect.ValueOf(in)}
+	if !skipped && !yield(in) {
+		return true
+	}
 
-				// TODO make stepFnCache a struct for extra arguments
-				if i == 2 {
-					args = append(args, reflect.ValueOf(-1))
-				}
-				res := fn.Call(args)
-				out, skip, err := res[0].Interface(), res[1].Bool(), res[2].Interface()
-				if err != nil {
-					// TODO return error
-				}
-
-				if skip || err != nil {
-					skipped = true
-					break
-				}
-
-				in = out
-			}
-
-			if !skipped && !yield(in) {
-				return true
-			}
-
-			return false
-		}
-
-		if t.inCh != nil {
-			for i := range t.inCh {
-				if process(i) {
-					break
-				}
-			}
-		} else {
-			for _, i := range t.in {
-				if process(i) {
-					break
-				}
-			}
-		}
-	}, nil
+	return false
 }
 
-func createCacheID() string {
+func CreateCacheID() string {
 	for {
 		id := randomString(8)
-		if _, ok := stepFnCache[id]; !ok {
+		if _, ok := FnCache[id]; !ok {
 			fmt.Println("id", id)
 			return id
 		}
