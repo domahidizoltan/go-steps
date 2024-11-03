@@ -14,9 +14,16 @@ var (
 )
 
 func ValidateSteps[T any](t *Transformator) {
+	transformatorTypePkg := t.StepsType.PkgPath()
 	prevOutType := reflect.TypeFor[T]()
 	for pos, s := range t.Steps {
 		stepType := reflect.TypeOf(s)
+
+		if stepType.PkgPath() != transformatorTypePkg {
+			delete(FnCache, t.ID)
+			t.Err = fmt.Errorf("%w: [pos %d.] %s", ErrInvalidStepType, pos, stepType.Name())
+			return
+		}
 
 		var fnType reflect.Type
 		var out0 reflect.Type

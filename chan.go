@@ -2,8 +2,10 @@ package steps
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/domahidizoltan/go-steps/internal/pkg/step"
+	c "github.com/domahidizoltan/go-steps/kind/chansteps"
 )
 
 type chanInput[T any] <-chan T
@@ -17,12 +19,19 @@ func TransformChan[T any](in <-chan T) chanInput[T] {
 	return chanInput[T](in)
 }
 
-func (i chanInput[T]) With(steps ...any) chanTransformator[T] {
+func (i chanInput[T]) With(steps ...c.AnyStep) chanTransformator[T] {
+	anySteps := make([]any, 0, len(steps))
+	for _, s := range steps {
+		anySteps = append(anySteps, s)
+	}
+
 	t := chanTransformator[T]{
 		in: i,
+
 		Transformator: step.Transformator{
-			ID:    step.CreateCacheID(),
-			Steps: steps,
+			ID:        step.CreateCacheID(),
+			StepsType: reflect.TypeOf(steps[0]),
+			Steps:     anySteps,
 		},
 	}
 

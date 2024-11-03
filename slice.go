@@ -2,8 +2,10 @@ package steps
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/domahidizoltan/go-steps/internal/pkg/step"
+	s "github.com/domahidizoltan/go-steps/kind/slicesteps"
 )
 
 type sliceInput[T any] []T
@@ -17,12 +19,18 @@ func TransformSlice[T any](in []T) sliceInput[T] {
 	return sliceInput[T](in)
 }
 
-func (i sliceInput[T]) With(steps ...any) sliceTransformator[T] {
+func (i sliceInput[T]) With(steps ...s.AnyStep) sliceTransformator[T] {
+	anySteps := make([]any, 0, len(steps))
+	for _, s := range steps {
+		anySteps = append(anySteps, s)
+	}
+
 	t := sliceTransformator[T]{
 		in: i,
 		Transformator: step.Transformator{
-			ID:    step.CreateCacheID(),
-			Steps: steps,
+			ID:        step.CreateCacheID(),
+			StepsType: reflect.TypeFor[s.AnyStep](),
+			Steps:     anySteps,
 		},
 	}
 
