@@ -35,7 +35,7 @@ func (s *steps) Validate() error {
 	}
 
 	s.validated = true
-	s.fnTypes, s.err = step.ValidateStepsNew(s.stps)
+	s.fnTypes, s.err = step.ValidateSteps(s.stps)
 	return s.err
 }
 

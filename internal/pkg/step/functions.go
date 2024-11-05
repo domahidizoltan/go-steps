@@ -13,7 +13,7 @@ var (
 	binaryInputStepPattern = regexp.MustCompile(`^BinaryInputStep\[(.*),(.*),(.*)]$`)
 )
 
-func ValidateStepsNew[T any](steps []T) ([]FnType, error) {
+func ValidateSteps[T any](steps []T) ([]FnType, error) {
 	if len(steps) == 0 {
 		return nil, nil
 	}
@@ -52,50 +52,6 @@ func ValidateStepsNew[T any](steps []T) ([]FnType, error) {
 		prevOutType = out0
 	}
 	return fnTypes, nil
-}
-
-// TODO deprecated
-func ValidateSteps[T any](t *Transformator) {
-	transformatorTypePkg := t.StepsType.PkgPath()
-	prevOutType := reflect.TypeFor[T]()
-	for pos, s := range t.Steps {
-		stepType := reflect.TypeOf(s)
-
-		if stepType.PkgPath() != transformatorTypePkg {
-			delete(FnCache, t.ID)
-			t.Err = fmt.Errorf("%w: [pos %d.] %s", ErrInvalidStepType, pos, stepType.Name())
-			return
-		}
-
-		var fnType reflect.Type
-		var out0 reflect.Type
-		var err error
-
-		switch {
-		case strings.HasPrefix(stepType.Name(), "BinaryInputStep"):
-			fnType, out0, err = binaryInputStepParser(pos, prevOutType, stepType)
-		default:
-			fnType, out0, err = stepParser(pos, prevOutType, stepType)
-		}
-
-		if err != nil {
-			delete(FnCache, t.ID)
-			t.Err = err
-			return
-		}
-
-		stepFn := reflect.ValueOf(s).Convert(fnType)
-		if pos == 0 {
-			FnCache[t.ID] = []FnType{} // TODO make
-		}
-		FnCache[t.ID] = append(FnCache[t.ID], FnType{
-			Type: fnType,
-			Val:  stepFn,
-		})
-
-		t.Steps = append(t.Steps, s)
-		prevOutType = out0
-	}
 }
 
 func stepParser(pos int, prevOutType reflect.Type, stepType reflect.Type) (reflect.Type, reflect.Type, error) {
