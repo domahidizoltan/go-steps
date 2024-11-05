@@ -13,7 +13,7 @@ type (
 		Steps     []any
 	}
 
-	Data struct {
+	FnType struct {
 		Type reflect.Type
 		Val  reflect.Value
 	}

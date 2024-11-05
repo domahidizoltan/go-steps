@@ -20,22 +20,32 @@ func TransformSlice[T any](in []T) sliceInput[T] {
 }
 
 func (i sliceInput[T]) With(steps ...s.AnyStep) sliceTransformator[T] {
+	t := createSliceTransformator[T](steps...)
+	step.ValidateSteps[T](&t.Transformator)
+	t.in = i
+	return t
+}
+
+func ValidateSliceSteps(steps ...s.AnyStep) error {
+	// TODO take T with reflection for first parameter type of first step
+	t := createSliceTransformator[string](steps...)
+	step.ValidateSteps[string](&t.Transformator)
+	return t.Err
+}
+
+func createSliceTransformator[T any](steps ...s.AnyStep) sliceTransformator[T] {
 	anySteps := make([]any, 0, len(steps))
 	for _, s := range steps {
 		anySteps = append(anySteps, s)
 	}
 
-	t := sliceTransformator[T]{
-		in: i,
+	return sliceTransformator[T]{
 		Transformator: step.Transformator{
 			ID:        step.CreateCacheID(),
 			StepsType: reflect.TypeFor[s.AnyStep](),
 			Steps:     anySteps,
 		},
 	}
-
-	step.ValidateSteps[T](&t.Transformator)
-	return t
 }
 
 func (t sliceTransformator[T]) AsRange() (func(yield func(i any) bool), error) {

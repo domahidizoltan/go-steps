@@ -4,15 +4,14 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/domahidizoltan/go-steps"
-	s "github.com/domahidizoltan/go-steps/kind/slicesteps"
+	s "github.com/domahidizoltan/go-steps/slices"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTransformSliceAsRange(t *testing.T) {
-	r, err := steps.TransformSlice([]string{"1", "2", "3", "4", "5"}).
-		With(
+	r, err := s.Transform([]string{"1", "2", "3", "4", "5"}).
+		WithSteps(
 			s.Map(func(i string) (int, error) {
 				return strconv.Atoi(i)
 			}),

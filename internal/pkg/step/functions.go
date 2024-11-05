@@ -13,6 +13,48 @@ var (
 	binaryInputStepPattern = regexp.MustCompile(`^BinaryInputStep\[(.*),(.*),(.*)]$`)
 )
 
+func ValidateStepsNew[T any](steps []T) ([]FnType, error) {
+	if len(steps) == 0 {
+		return nil, nil
+	}
+
+	fnTypes := make([]FnType, 0, len(steps))
+	transformatorTypePkg := reflect.TypeFor[T]().PkgPath()
+	prevOutType := reflect.TypeOf(steps[0]).In(0)
+	for pos, s := range steps {
+		stepType := reflect.TypeOf(s)
+
+		if stepType.PkgPath() != transformatorTypePkg {
+			return nil, fmt.Errorf("%w: [pos %d.] %s", ErrInvalidStepType, pos, stepType.Name())
+		}
+
+		var fnType reflect.Type
+		var out0 reflect.Type
+		var err error
+
+		switch {
+		case strings.HasPrefix(stepType.Name(), "BinaryInputStep"):
+			fnType, out0, err = binaryInputStepParser(pos, prevOutType, stepType)
+		default:
+			fnType, out0, err = stepParser(pos, prevOutType, stepType)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		stepFn := reflect.ValueOf(s).Convert(fnType)
+		fnTypes = append(fnTypes, FnType{
+			Type: fnType,
+			Val:  stepFn,
+		})
+
+		prevOutType = out0
+	}
+	return fnTypes, nil
+}
+
+// TODO deprecated
 func ValidateSteps[T any](t *Transformator) {
 	transformatorTypePkg := t.StepsType.PkgPath()
 	prevOutType := reflect.TypeFor[T]()
@@ -44,9 +86,9 @@ func ValidateSteps[T any](t *Transformator) {
 
 		stepFn := reflect.ValueOf(s).Convert(fnType)
 		if pos == 0 {
-			FnCache[t.ID] = []Data{} // TODO make
+			FnCache[t.ID] = []FnType{} // TODO make
 		}
-		FnCache[t.ID] = append(FnCache[t.ID], Data{
+		FnCache[t.ID] = append(FnCache[t.ID], FnType{
 			Type: fnType,
 			Val:  stepFn,
 		})
@@ -101,7 +143,7 @@ func binaryInputStepParser(pos int, prevOutType reflect.Type, stepType reflect.T
 	return fnType, out0, nil
 }
 
-func Process[T any](i T, yield func(i any) bool, fns []Data) bool {
+func Process[T any](i T, yield func(i any) bool, fns []FnType) bool {
 	var in any = i
 	var skipped bool
 	for _, fn := range fns {
@@ -145,4 +187,12 @@ func randomString(length int) string {
 	b := make([]byte, length+2)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)[2 : length+2]
+}
+
+func ToAnySlice[T any](steps []T) []any {
+	anySteps := make([]any, 0, len(steps))
+	for _, s := range steps {
+		anySteps = append(anySteps, s)
+	}
+	return anySteps
 }

@@ -1,3 +1,3 @@
 package step
 
-var FnCache = map[string][]Data{}
+var FnCache = map[string][]FnType{}
