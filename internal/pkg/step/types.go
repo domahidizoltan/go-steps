@@ -2,26 +2,15 @@ package step
 
 import (
 	"errors"
-	"reflect"
+
+	"github.com/domahidizoltan/go-steps/types"
 )
 
 type (
 	Transformator struct {
-		ID        string
-		Err       error
-		StepsType reflect.Type
-		Steps     []any
-	}
-
-	FnType struct {
-		Type reflect.Type
-		Val  reflect.Value
+		Error error
+		Steps []types.StepFn
 	}
 )
 
-var (
-	ErrInvalidStepType   = errors.New("Invalid step type")
-	ErrNotAStep          = errors.New("Not a Step function")
-	ErrInvalidInputType  = errors.New("Invalid input type")
-	ErrInvalidOutputType = errors.New("Invalid output type")
-)
+var ErrInvalidInputType = errors.New("Invalid input type")

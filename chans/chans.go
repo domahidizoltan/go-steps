@@ -1,18 +1,18 @@
 package chans
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/domahidizoltan/go-steps/internal/pkg/step"
+	"github.com/domahidizoltan/go-steps/types"
 )
 
 type (
-	steps struct {
-		err       error
-		stps      []AnyStep
-		fnTypes   []step.FnType
-		validated bool
+	tempSteps struct {
+		error        error
+		inType       reflect.Type
+		stepWrappers []types.StepWrapper
+		steps        []types.StepFn
 	}
 
 	input[T any] <-chan T
@@ -23,71 +23,60 @@ type (
 	}
 )
 
-func Steps(s ...AnyStep) steps {
-	return steps{
-		stps: s,
+// TODO can I proxy some of these functions as well?
+func Steps(s ...types.StepWrapper) tempSteps {
+	// fmt.Println("addSteps")
+	return tempSteps{
+		stepWrappers: s,
 	}
 }
 
-func (s *steps) Validate() error {
-	if s.validated {
-		return s.err
+func (s *tempSteps) Validate() error {
+	if s.error != nil {
+		return s.error
 	}
 
-	s.validated = true
-	s.fnTypes, s.err = step.ValidateSteps(s.stps)
-	return s.err
+	s.steps, s.error = step.GetValidatedSteps[tempSteps](s.stepWrappers)
+	return s.error
 }
 
 func Transform[T any](in <-chan T) input[T] {
 	return input[T](in)
 }
 
-func (i input[T]) WithSteps(steps ...AnyStep) transformator[T] {
+// TODO allow adding external steps
+
+func (i input[T]) WithSteps(steps ...types.StepWrapper) transformator[T] {
 	return i.With(Steps(steps...))
 }
 
-func (i input[T]) With(steps steps) transformator[T] {
+func (i input[T]) With(steps tempSteps) transformator[T] {
 	t := transformator[T]{
 		Transformator: step.Transformator{
-			Err: steps.Validate(),
+			Error: steps.Validate(),
 		},
 	}
 
-	if t.Err != nil {
+	if t.Error != nil {
 		return t
 	}
 
-	inType := reflect.TypeFor[T]()
-	firstStepFirstInputType := steps.fnTypes[0].Type.In(0)
-	if inType != firstStepFirstInputType {
-		t.Err = step.ErrInvalidInputType
-		return t
-	}
-
-	// TODO fill cache and truncate fnTypes
 	// TODO in type must match first step first input type
 	t.in = i
-	t.ID = step.CreateCacheID()
-	// t.StepsType = reflect.TypeFor[AnyStep]()
-	t.Steps = step.ToAnySlice(steps.stps)
-
-	step.FnCache[t.ID] = steps.fnTypes
+	t.Steps = append(t.Steps, steps.steps...)
 	return t
 }
 
 func (t transformator[T]) AsRange() (func(yield func(i any) bool), error) {
-	fmt.Println("chan AsRange")
+	// fmt.Println("chan AsRange")
 
-	if t.Err != nil {
-		delete(step.FnCache, t.ID)
-		return nil, t.Err
+	if t.Error != nil {
+		return nil, t.Error
 	}
 
-	fns := step.FnCache[t.ID]
 	return func(yield func(i any) bool) {
 		for i := range t.in {
-			if step.Process(i, yield, fns) {
+			if step.Process(i, yield, t.Steps) {
 				break
 			}
 		}

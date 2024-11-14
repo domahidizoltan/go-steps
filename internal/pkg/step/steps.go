@@ -1,31 +1,56 @@
 package step
 
 import (
+	"reflect"
+
 	"github.com/domahidizoltan/go-steps/types"
 )
 
-// type Step[U, V comparable] func(in U) (V, bool, error)
-
-// TODO add partial Step[U ,V ,W comparable]
-func Map[U, V comparable](fn func(in U) (V, error)) types.Step[U, V] {
-	return func(in U) (V, bool, error) {
-		out, err := fn(in)
-		return out, err != nil, err
+func Map[U, V any](fn func(in U) (V, error)) types.StepWrapper {
+	return types.StepWrapper{
+		InTypes:  [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		OutTypes: [types.MaxArgs]reflect.Type{reflect.TypeFor[V]()},
+		StepFn: func(in types.StepInput) types.StepOutput {
+			out, err := fn(in.Args[0].(U))
+			return types.StepOutput{
+				Args:    [types.MaxArgs]any{out},
+				ArgsLen: 1,
+				Error:   err,
+				Skip:    err != nil,
+			}
+		},
 	}
 }
 
-func Filter[U comparable](fn func(in U) (bool, error)) types.Step[U, U] {
-	return func(in U) (U, bool, error) {
-		ok, err := fn(in)
-		return in, ok, err
+func Filter[U any](fn func(in U) (bool, error)) types.StepWrapper {
+	return types.StepWrapper{
+		InTypes:  [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		OutTypes: [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		StepFn: func(in types.StepInput) types.StepOutput {
+			ok, err := fn(in.Args[0].(U))
+			return types.StepOutput{
+				Args:    [types.MaxArgs]any{in.Args[0].(U)},
+				ArgsLen: 1,
+				Error:   err,
+				Skip:    ok,
+			}
+		},
 	}
 }
 
 // TODO Added only for testing purposes
-// type BinaryInputStep[U, V, W comparable] func(in1 U, in2 V) (W, bool, error)
 
-func MultiplyBy[U ~int](multiplier U) types.BinaryInputStep[U, U, U] {
-	return func(in U, _ U) (U, bool, error) {
-		return in * multiplier, false, nil
+func MultiplyBy[U ~int](multiplier U) types.StepWrapper {
+	return types.StepWrapper{
+		InTypes:  [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		OutTypes: [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		StepFn: func(in types.StepInput) types.StepOutput {
+			return types.StepOutput{
+				Args:    [types.MaxArgs]any{in.Args[0].(U) * multiplier},
+				ArgsLen: 1,
+				Error:   nil,
+				Skip:    false,
+			}
+		},
 	}
 }

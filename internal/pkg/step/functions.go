@@ -1,154 +1,67 @@
 package step
 
 import (
-	"crypto/rand"
 	"fmt"
 	"reflect"
-	"regexp"
-	"strings"
+
+	"github.com/domahidizoltan/go-steps/types"
 )
 
-var (
-	stepPattern            = regexp.MustCompile(`^Step\[(.*),(.*)]$`)
-	binaryInputStepPattern = regexp.MustCompile(`^BinaryInputStep\[(.*),(.*),(.*)]$`)
-)
-
-func ValidateSteps[T any](steps []T) ([]FnType, error) {
-	if len(steps) == 0 {
+func GetValidatedSteps[T any](stepWrappers []types.StepWrapper) ([]types.StepFn, error) {
+	if len(stepWrappers) == 0 {
 		return nil, nil
 	}
+	validSteps := make([]types.StepFn, 0, len(stepWrappers))
 
-	fnTypes := make([]FnType, 0, len(steps))
-	transformatorTypePkg := reflect.TypeFor[T]().PkgPath()
-	prevOutType := reflect.TypeOf(steps[0]).In(0)
-	for pos, s := range steps {
-		stepType := reflect.TypeOf(s)
-
-		if stepType.PkgPath() != transformatorTypePkg {
-			return nil, fmt.Errorf("%w: [pos %d.] %s", ErrInvalidStepType, pos, stepType.Name())
-		}
-
-		var fnType reflect.Type
-		var out0 reflect.Type
-		var err error
-
-		switch {
-		case strings.HasPrefix(stepType.Name(), "BinaryInputStep"):
-			fnType, out0, err = binaryInputStepParser(pos, prevOutType, stepType)
-		default:
-			fnType, out0, err = stepParser(pos, prevOutType, stepType)
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		stepFn := reflect.ValueOf(s).Convert(fnType)
-		fnTypes = append(fnTypes, FnType{
-			Type: fnType,
-			Val:  stepFn,
-		})
-
-		prevOutType = out0
+	inType := stepWrappers[0].InTypes[0]
+	outTypes := [types.MaxArgs]reflect.Type{}
+	for i := 0; i < types.MaxArgs; i++ {
+		outTypes[i] = reflect.Zero(inType).Type()
 	}
-	return fnTypes, nil
+
+	for pos, wrapper := range stepWrappers {
+		stepType := reflect.TypeOf(wrapper.StepFn)
+		// fmt.Printf("stepType %s \ntransfType %s", stepType.PkgPath(), transformatorTypePkg)
+		// if stepType.PkgPath() != transformatorTypePkg {
+		// 	return fmt.Errorf("%w: [pos %d.] %s", ErrInvalidStepType, pos, stepType.Name())
+		// }
+
+		for i := 0; i < len(wrapper.OutTypes); i++ {
+			if outTypes[i] != wrapper.InTypes[i] {
+				return nil, fmt.Errorf("%w: [pos %d.] %s", ErrInvalidInputType, pos, stepType.Name())
+			}
+			outTypes = wrapper.OutTypes
+		}
+
+		validSteps = append(validSteps, types.StepFn(wrapper.StepFn))
+	}
+
+	return validSteps, nil
 }
 
-func stepParser(pos int, prevOutType reflect.Type, stepType reflect.Type) (reflect.Type, reflect.Type, error) {
-	if !stepPattern.MatchString(stepType.Name()) {
-		return nil, nil, fmt.Errorf("%w: [pos %d.] %s", ErrNotAStep, pos, stepType.Name())
+func Process[T any](i T, yield func(in any) bool, fns []types.StepFn) bool {
+	in := types.StepInput{
+		Args:    [4]any{i},
+		ArgsLen: 1,
 	}
-
-	in0 := stepType.In(0)
-	if in0 != prevOutType {
-		if pos == 0 {
-			return nil, nil, fmt.Errorf("%w: [pos %d.] input type was %s instead of %s from the generic type", ErrInvalidInputType, pos, in0.Name(), prevOutType.Name())
-		}
-
-		return nil, nil, fmt.Errorf("%w: [pos %d.] input type was %s instead of %s from the previous output", ErrInvalidInputType, pos, in0.Name(), prevOutType.Name())
-	}
-
-	out0 := stepType.Out(0)
-	out1 := reflect.TypeFor[bool]()
-	out2 := reflect.TypeFor[error]()
-
-	fnType := reflect.FuncOf([]reflect.Type{in0}, []reflect.Type{out0, out1, out2}, false)
-	return fnType, out0, nil
-}
-
-func binaryInputStepParser(pos int, prevOutType reflect.Type, stepType reflect.Type) (reflect.Type, reflect.Type, error) {
-	if !binaryInputStepPattern.MatchString(stepType.Name()) {
-		return nil, nil, fmt.Errorf("%w: [pos %d.] %s", ErrNotAStep, pos, stepType.Name())
-	}
-
-	in0 := stepType.In(0)
-	in1 := stepType.In(1)
-	if in0 != prevOutType {
-		if pos == 0 {
-			return nil, nil, fmt.Errorf("%w: [pos %d.] input type was %s instead of %s from the generic type", ErrInvalidInputType, pos, in0.Name(), prevOutType.Name())
-		}
-
-		return nil, nil, fmt.Errorf("%w: [pos %d.] input type was %s instead of %s from the previous output", ErrInvalidInputType, pos, in0.Name(), prevOutType.Name())
-	}
-
-	out0 := stepType.Out(0)
-	out1 := reflect.TypeFor[bool]()
-	out2 := reflect.TypeFor[error]()
-
-	fnType := reflect.FuncOf([]reflect.Type{in0, in1}, []reflect.Type{out0, out1, out2}, false)
-	return fnType, out0, nil
-}
-
-func Process[T any](i T, yield func(i any) bool, fns []FnType) bool {
-	var in any = i
 	var skipped bool
 	for _, fn := range fns {
-		args := []reflect.Value{reflect.ValueOf(in)}
+		out := fn(in)
 
-		if fn.Type.NumIn() > 1 {
-			args = append(args, reflect.ValueOf(-1))
-		}
-		res := fn.Val.Call(args)
-		out, skip, err := res[0].Interface(), res[1].Bool(), res[2].Interface()
-		if err != nil {
-			// TODO return error
-		}
-
-		if skip || err != nil {
+		if out.Skip || out.Error != nil {
 			skipped = true
 			break
 		}
 
-		in = out
+		in = types.StepInput{
+			Args:    out.Args,
+			ArgsLen: out.ArgsLen,
+		}
 	}
 
-	if !skipped && !yield(in) {
+	if !skipped && !yield(in.Args[0]) {
 		return true
 	}
 
 	return false
-}
-
-func CreateCacheID() string {
-	for {
-		id := randomString(8)
-		if _, ok := FnCache[id]; !ok {
-			fmt.Println("id", id)
-			return id
-		}
-	}
-}
-
-func randomString(length int) string {
-	b := make([]byte, length+2)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)[2 : length+2]
-}
-
-func ToAnySlice[T any](steps []T) []any {
-	anySteps := make([]any, 0, len(steps))
-	for _, s := range steps {
-		anySteps = append(anySteps, s)
-	}
-	return anySteps
 }

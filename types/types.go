@@ -1,6 +1,27 @@
 package types
 
+import "reflect"
+
+const MaxArgs = 4
+
 type (
-	Step[U, V comparable]               func(in U) (V, bool, error)
-	BinaryInputStep[U, V, W comparable] func(in1 U, in2 V) (W, bool, error)
+	StepInput struct {
+		Args    [MaxArgs]any
+		ArgsLen uint8
+	}
+
+	StepOutput struct {
+		Error   error
+		Args    [MaxArgs]any
+		ArgsLen uint8
+		Skip    bool
+	}
+
+	StepWrapper struct {
+		InTypes  [MaxArgs]reflect.Type
+		OutTypes [MaxArgs]reflect.Type
+		StepFn   StepFn
+	}
+
+	StepFn func(StepInput) StepOutput
 )
