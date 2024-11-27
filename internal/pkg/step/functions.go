@@ -39,15 +39,14 @@ func GetValidatedSteps[T any](stepWrappers []types.StepWrapper) ([]types.StepFn,
 	return validSteps, nil
 }
 
-func Process[T any](i T, yield func(in any) bool, fns []types.StepFn) bool {
+func getProcessResult[V any](v V, transformator Transformator) (types.StepInput, bool) {
 	in := types.StepInput{
-		Args:    [4]any{i},
+		Args:    [4]any{v},
 		ArgsLen: 1,
 	}
 	var skipped bool
-	for _, fn := range fns {
+	for _, fn := range transformator.Steps {
 		out := fn(in)
-
 		if out.Skip || out.Error != nil {
 			skipped = true
 			break
@@ -59,7 +58,43 @@ func Process[T any](i T, yield func(in any) bool, fns []types.StepFn) bool {
 		}
 	}
 
+	if !skipped && transformator.Aggregator != nil {
+		out := transformator.Aggregator(in)
+
+		if out.Skip || out.Error != nil {
+			skipped = true
+		} else {
+			in = types.StepInput{
+				Args:    out.Args,
+				ArgsLen: out.ArgsLen,
+			}
+		}
+	}
+
+	return in, skipped
+}
+
+func Process[V any](v V, yield func(any) bool, transformator Transformator) bool {
+	in, skipped := getProcessResult(v, transformator)
+
 	if !skipped && !yield(in.Args[0]) {
+		return true
+	}
+
+	return false
+}
+
+func ProcessIndexed[V any](k any, v V, yield func(any, any) bool, transformator Transformator) bool {
+	in, skipped := getProcessResult(v, transformator)
+
+	idx := k
+	val := in.Args[0]
+	if in.ArgsLen > 1 {
+		idx = in.Args[0]
+		val = in.Args[1]
+	}
+
+	if !skipped && !yield(idx, val) {
 		return true
 	}
 

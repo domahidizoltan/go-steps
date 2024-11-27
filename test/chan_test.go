@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	c "github.com/domahidizoltan/go-steps/chans"
+	s "github.com/domahidizoltan/go-steps"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,19 +13,19 @@ func TestTransformChanAsRange(t *testing.T) {
 	closeCh := make(chan struct{}, 1)
 	inCh := make(chan string, 5)
 
-	r, err := c.Transform(inCh).
-		WithSteps(
-			c.Map(func(i string) (int, error) {
+	r, err := s.Transform[string](inCh).
+		With(s.Steps(
+			s.Map(func(i string) (int, error) {
 				return strconv.Atoi(i)
 			}),
-			c.Filter(func(i int) (bool, error) {
+			s.Filter(func(i int) (bool, error) {
 				return i%2 == 0, nil
 			}),
-			c.MultiplyBy(3),
-			c.Map(func(i int) (string, error) {
+			s.MultiplyBy(3),
+			s.Map(func(i int) (string, error) {
 				return "_" + strconv.Itoa(i*2), nil
 			}),
-		).AsRange()
+		)).AsRange()
 	require.NoError(t, err)
 
 	go func(in chan string) {
@@ -39,13 +39,13 @@ func TestTransformChanAsRange(t *testing.T) {
 		close(in)
 	}(inCh)
 
-	expected := []string{"_6", "_18", "_30"}
+	expected := []string{"_12", "_24"}
 	actual := []string{}
 	for i := range r {
 		actual = append(actual, i.(string))
 	}
 
 	<-closeCh
-	assert.Len(t, actual, 3)
+	assert.Len(t, actual, 2)
 	assert.Equal(t, expected, actual)
 }

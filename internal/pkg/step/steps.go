@@ -6,12 +6,16 @@ import (
 	"github.com/domahidizoltan/go-steps/types"
 )
 
-func Map[U, V any](fn func(in U) (V, error)) types.StepWrapper {
+func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) types.StepWrapper {
 	return types.StepWrapper{
-		InTypes:  [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
-		OutTypes: [types.MaxArgs]reflect.Type{reflect.TypeFor[V]()},
+		InTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[IN0](),
+		},
+		OutTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[OUT0](),
+		},
 		StepFn: func(in types.StepInput) types.StepOutput {
-			out, err := fn(in.Args[0].(U))
+			out, err := fn(in.Args[0].(IN0))
 			return types.StepOutput{
 				Args:    [types.MaxArgs]any{out},
 				ArgsLen: 1,
@@ -22,17 +26,41 @@ func Map[U, V any](fn func(in U) (V, error)) types.StepWrapper {
 	}
 }
 
-func Filter[U any](fn func(in U) (bool, error)) types.StepWrapper {
+func Filter[IN0 any](fn func(in IN0) (bool, error)) types.StepWrapper {
 	return types.StepWrapper{
-		InTypes:  [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
-		OutTypes: [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		InTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[IN0](),
+		},
+		OutTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[IN0](),
+		},
 		StepFn: func(in types.StepInput) types.StepOutput {
-			ok, err := fn(in.Args[0].(U))
+			ok, err := fn(in.Args[0].(IN0))
 			return types.StepOutput{
-				Args:    [types.MaxArgs]any{in.Args[0].(U)},
+				Args:    [types.MaxArgs]any{in.Args[0].(IN0)},
 				ArgsLen: 1,
 				Error:   err,
-				Skip:    ok,
+				Skip:    !ok,
+			}
+		},
+	}
+}
+
+func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, error)) types.ReducerWrapper {
+	type mapType map[OUT0][]OUT1
+	return types.ReducerWrapper{
+		InTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[IN0](),
+		},
+		OutTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[mapType](),
+		},
+		ReducerFn: func(in types.StepInput) types.StepOutput {
+			groupKey, value, err := fn(in.Args[0].(IN0))
+			return types.StepOutput{
+				Args:    [types.MaxArgs]any{groupKey, value},
+				ArgsLen: 2,
+				Error:   err,
 			}
 		},
 	}
@@ -40,13 +68,17 @@ func Filter[U any](fn func(in U) (bool, error)) types.StepWrapper {
 
 // TODO Added only for testing purposes
 
-func MultiplyBy[U ~int](multiplier U) types.StepWrapper {
+func MultiplyBy[IN0 ~int](multiplier IN0) types.StepWrapper {
 	return types.StepWrapper{
-		InTypes:  [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
-		OutTypes: [types.MaxArgs]reflect.Type{reflect.TypeFor[U]()},
+		InTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[IN0](),
+		},
+		OutTypes: [types.MaxArgs]reflect.Type{
+			reflect.TypeFor[IN0](),
+		},
 		StepFn: func(in types.StepInput) types.StepOutput {
 			return types.StepOutput{
-				Args:    [types.MaxArgs]any{in.Args[0].(U) * multiplier},
+				Args:    [types.MaxArgs]any{in.Args[0].(IN0) * multiplier},
 				ArgsLen: 1,
 				Error:   nil,
 				Skip:    false,
