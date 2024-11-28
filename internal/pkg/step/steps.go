@@ -48,6 +48,7 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) types.StepWrapper {
 
 func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, error)) types.ReducerWrapper {
 	type mapType map[OUT0][]OUT1
+	acc := mapType{}
 	return types.ReducerWrapper{
 		InTypes: [types.MaxArgs]reflect.Type{
 			reflect.TypeFor[IN0](),
@@ -57,10 +58,12 @@ func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, er
 		},
 		ReducerFn: func(in types.StepInput) types.StepOutput {
 			groupKey, value, err := fn(in.Args[0].(IN0))
+			acc[groupKey] = append(acc[groupKey], value)
 			return types.StepOutput{
-				Args:    [types.MaxArgs]any{groupKey, value},
-				ArgsLen: 2,
+				Args:    [types.MaxArgs]any{acc},
+				ArgsLen: 1,
 				Error:   err,
+				Skip:    true,
 			}
 		},
 	}

@@ -18,10 +18,11 @@ type (
 	}
 
 	Transformator struct {
-		Error      error
-		Aggregator types.ReducerFn
-		Steps      []types.StepFn
-		Validated  StepType
+		Error               error
+		Aggregator          types.ReducerFn
+		LastAggregatedValue *types.StepOutput
+		Steps               []types.StepFn
+		Validated           StepType
 	}
 )
 
