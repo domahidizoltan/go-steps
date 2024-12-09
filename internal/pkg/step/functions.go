@@ -28,7 +28,7 @@ func GetValidatedSteps[T any](stepWrappers []types.StepWrapper) ([]types.StepFn,
 
 		for i := 0; i < len(wrapper.OutTypes); i++ {
 			if outTypes[i] != wrapper.InTypes[i] {
-				return nil, fmt.Errorf("%w: [pos %d.] %s", ErrInvalidInputType, pos, stepType.Name())
+				return nil, fmt.Errorf("%w: [pos %d.] %s : %s != %s", ErrInvalidInputType, pos, stepType.Name(), outTypes[i].Kind().String(), wrapper.InTypes[i].Kind().String())
 			}
 			outTypes = wrapper.OutTypes
 		}

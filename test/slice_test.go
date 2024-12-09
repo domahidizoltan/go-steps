@@ -89,15 +89,14 @@ func loadCsv(filePath string) ([]employee, error) {
 	return employees, nil
 }
 
-type ageRange uint8
-
-const (
-	young ageRange = iota
-	midAge
-	mature
-)
-
 func TestAggregateCsv(t *testing.T) {
+	type ageRange uint8
+
+	const (
+		young ageRange = iota
+		midAge
+		mature
+	)
 	employees, err := loadCsv("testdata/salaries.csv")
 	require.NoError(t, err)
 
@@ -144,5 +143,55 @@ func TestAggregateCsv(t *testing.T) {
 		}
 	}
 
+	assert.Equal(t, expected, actual)
+}
+
+func TestSplitAndZip(t *testing.T) {
+	type fizzBuzz uint8
+
+	const (
+		none fizzBuzz = iota
+		fz
+		bz
+		fzbz
+	)
+
+	r, err := s.Transform[int]([]int{1, 2, 3, 4, 5, 6}).
+		With(s.Steps(
+			s.Split(func(i int) (fizzBuzz, error) {
+				switch {
+				case i%6 == 0:
+					return fzbz, nil
+				case i%2 == 0:
+					return fz, nil
+				case i%3 == 0:
+					return bz, nil
+				}
+				return none, nil
+			}),
+			s.WithBranches[int](
+				s.Steps(s.Map(func(i int) (string, error) {
+					return strconv.Itoa(i), nil
+				})),
+				s.Steps(s.Map(func(i int) (string, error) {
+					return "fz:" + strconv.Itoa(i), nil
+				})),
+				s.Steps(s.Map(func(i int) (string, error) {
+					return "bz:" + strconv.Itoa(i), nil
+				})),
+				s.Steps(s.Map(func(i int) (string, error) {
+					return "fzbz:" + strconv.Itoa(i), nil
+				})),
+			),
+			s.Zip(),
+		)).
+		AsRange()
+
+	require.NoError(t, err)
+	expected := []string{"1", "fz:2", "bz:3", "fz:4", "5", "fzbz:6"}
+	actual := []string{}
+	for i := range r {
+		actual = append(actual, i.(string))
+	}
 	assert.Equal(t, expected, actual)
 }

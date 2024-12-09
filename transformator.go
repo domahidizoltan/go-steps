@@ -26,19 +26,8 @@ func Transform[T any, I inputType[T]](in I) input[T, I] {
 	return input[T, I]{in}
 }
 
-// TODO can I proxy some of these functions as well?
-func Steps(s ...types.StepWrapper) tempSteps {
-	// fmt.Println("addSteps")
-	return tempSteps{
-		StepWrappers: s,
-	}
-}
-
-func (t tempSteps) Aggregate(fn types.ReducerWrapper) tempSteps { //?
-	return tempSteps{
-		StepWrappers: t.StepWrappers,
-		Aggregator:   fn.ReducerFn,
-	}
+func Steps(s ...types.StepWrapper) is.TempSteps {
+	return is.Steps(s...)
 }
 
 func (s *tempSteps) Validate() error {
@@ -58,21 +47,25 @@ func (s *tempSteps) Validate() error {
 // 	return i.With(Steps(steps...))
 // }
 
-func (i input[T, I]) With(steps tempSteps) transformator[T, I] {
+func (i input[T, I]) With(steps is.TempSteps) transformator[T, I] {
 	// validate if input T matches first step input type
+
+	_steps := tempSteps{
+		StepWrappers: steps.StepWrappers,
+		Aggregator:   steps.Aggregator,
+	}
 	t := transformator[T, I]{
 		Transformator: is.Transformator{
-			Error: steps.Validate(),
+			Error: _steps.Validate(),
 		},
 	}
-
 	if t.Error != nil {
 		return t
 	}
 
 	// TODO in type must match first step first input type
 	t.in = i.data
-	t.Steps = append(t.Steps, steps.Steps...)
-	t.Aggregator = steps.Aggregator
+	t.Steps = _steps.Steps
+	t.Aggregator = _steps.Aggregator
 	return t
 }

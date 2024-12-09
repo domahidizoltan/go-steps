@@ -32,3 +32,16 @@ const (
 )
 
 var ErrInvalidInputType = errors.New("Invalid input type")
+
+func Steps(s ...types.StepWrapper) TempSteps {
+	return TempSteps{
+		StepWrappers: s,
+	}
+}
+
+func (t TempSteps) Aggregate(fn types.ReducerWrapper) TempSteps { //?
+	return TempSteps{
+		StepWrappers: t.StepWrappers,
+		Aggregator:   fn.ReducerFn,
+	}
+}
