@@ -2,45 +2,69 @@ package step
 
 import (
 	"errors"
-
-	"github.com/domahidizoltan/go-steps/types"
+	"reflect"
 )
 
-type (
-	StepType uint8
+const MaxArgs = 4
 
-	TempSteps struct {
+type (
+	StepInput struct {
+		Args    [MaxArgs]any
+		ArgsLen uint8
+	}
+
+	StepOutput struct {
+		Error   error
+		Args    [MaxArgs]any
+		ArgsLen uint8
+		Skip    bool
+		// Accumulate bool
+	}
+
+	StepWrapper struct {
+		InTypes  [MaxArgs]reflect.Type
+		OutTypes [MaxArgs]reflect.Type
+		StepFn   StepFn
+	}
+
+	StepFn func(StepInput) StepOutput
+
+	ReducerWrapper struct {
+		InTypes   [MaxArgs]reflect.Type
+		OutTypes  [MaxArgs]reflect.Type
+		ReducerFn ReducerFn
+	}
+	ReducerFn func(StepInput) StepOutput
+
+	stepType uint8
+
+	StepsContainer struct {
 		Error        error
-		StepWrappers []types.StepWrapper
-		Aggregator   types.ReducerFn
-		Steps        []types.StepFn
-		Validated    StepType
+		StepWrappers []StepWrapper
+		Aggregator   ReducerFn
+		Steps        []StepFn
+		Validated    stepType
 	}
 
 	Transformator struct {
 		Error               error
-		Aggregator          types.ReducerFn
-		LastAggregatedValue *types.StepOutput
-		Steps               []types.StepFn
-		Validated           StepType
+		Aggregator          ReducerFn
+		LastAggregatedValue *StepOutput
+		Steps               []StepFn
+		Validated           stepType
 	}
-)
-
-const (
-	StepTypeSteps StepType = iota
-	StepTypeAggregator
 )
 
 var ErrInvalidInputType = errors.New("Invalid input type")
 
-func Steps(s ...types.StepWrapper) TempSteps {
-	return TempSteps{
+func Steps(s ...StepWrapper) StepsContainer {
+	return StepsContainer{
 		StepWrappers: s,
 	}
 }
 
-func (t TempSteps) Aggregate(fn types.ReducerWrapper) TempSteps { //?
-	return TempSteps{
+func (t StepsContainer) Aggregate(fn ReducerWrapper) StepsContainer { //?
+	return StepsContainer{
 		StepWrappers: t.StepWrappers,
 		Aggregator:   fn.ReducerFn,
 	}

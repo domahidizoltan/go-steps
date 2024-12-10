@@ -3,19 +3,17 @@ package step
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/domahidizoltan/go-steps/types"
 )
 
-func GetValidatedSteps[T any](stepWrappers []types.StepWrapper) ([]types.StepFn, error) {
+func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, error) {
 	if len(stepWrappers) == 0 {
 		return nil, nil
 	}
-	validSteps := make([]types.StepFn, 0, len(stepWrappers))
+	validSteps := make([]StepFn, 0, len(stepWrappers))
 
 	inType := stepWrappers[0].InTypes[0]
-	outTypes := [types.MaxArgs]reflect.Type{}
-	for i := 0; i < types.MaxArgs; i++ {
+	outTypes := [MaxArgs]reflect.Type{}
+	for i := 0; i < MaxArgs; i++ {
 		outTypes[i] = reflect.Zero(inType).Type()
 	}
 
@@ -33,14 +31,14 @@ func GetValidatedSteps[T any](stepWrappers []types.StepWrapper) ([]types.StepFn,
 			outTypes = wrapper.OutTypes
 		}
 
-		validSteps = append(validSteps, types.StepFn(wrapper.StepFn))
+		validSteps = append(validSteps, StepFn(wrapper.StepFn))
 	}
 
 	return validSteps, nil
 }
 
-func getProcessResult[V any](v V, transformator *Transformator) (types.StepInput, bool) {
-	in := types.StepInput{
+func getProcessResult[V any](v V, transformator *Transformator) (StepInput, bool) {
+	in := StepInput{
 		Args:    [4]any{v},
 		ArgsLen: 1,
 	}
@@ -52,7 +50,7 @@ func getProcessResult[V any](v V, transformator *Transformator) (types.StepInput
 			break
 		}
 
-		in = types.StepInput{
+		in = StepInput{
 			Args:    out.Args,
 			ArgsLen: out.ArgsLen,
 		}
@@ -63,7 +61,7 @@ func getProcessResult[V any](v V, transformator *Transformator) (types.StepInput
 		transformator.LastAggregatedValue = &out
 
 		if out.Error == nil {
-			in = types.StepInput{
+			in = StepInput{
 				Args:    out.Args,
 				ArgsLen: out.ArgsLen,
 			}
@@ -78,7 +76,7 @@ func Process[V any](v V, yield func(any) bool, transformator *Transformator, isL
 	in, skipped := getProcessResult(v, transformator)
 
 	if transformator.LastAggregatedValue != nil && isLastItem {
-		return yield(*&transformator.LastAggregatedValue.Args[0])
+		return yield(transformator.LastAggregatedValue.Args[0])
 	}
 
 	if !skipped && !yield(in.Args[0]) {

@@ -1,34 +1,34 @@
 package steps
 
 import (
-	step "github.com/domahidizoltan/go-steps/internal/pkg/step"
-	"github.com/domahidizoltan/go-steps/types"
+	"github.com/domahidizoltan/go-steps/internal/pkg/step"
+	"github.com/domahidizoltan/go-steps/internal/pkg/stepwrapper"
 )
 
-func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) types.StepWrapper {
-	return step.Map(fn)
+func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) step.StepWrapper {
+	return stepwrapper.Map(fn)
 }
 
-func Filter[IN0 any](fn func(in IN0) (bool, error)) types.StepWrapper {
-	return step.Filter(fn)
+func Filter[IN0 any](fn func(in IN0) (bool, error)) step.StepWrapper {
+	return stepwrapper.Filter(fn)
 }
 
-func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) types.StepWrapper {
-	return step.Split(fn)
+func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) step.StepWrapper {
+	return stepwrapper.Split(fn)
 }
 
-func WithBranches[IN0 any](steps ...step.TempSteps) types.StepWrapper {
-	return step.WithBranches[IN0](steps...)
+func WithBranches[IN0 any](steps ...step.StepsContainer) step.StepWrapper {
+	return stepwrapper.WithBranches[IN0](steps...)
 }
 
-func Zip() types.StepWrapper {
-	return step.Zip()
+func Zip() step.StepWrapper {
+	return stepwrapper.Zip()
 }
 
-func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, error)) types.ReducerWrapper {
-	return step.GroupBy(fn)
+func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, error)) step.ReducerWrapper {
+	return stepwrapper.GroupBy(fn)
 }
 
-func MultiplyBy[IN0 ~int](multiplier IN0) types.StepWrapper {
-	return step.MultiplyBy(multiplier)
+func MultiplyBy[IN0 ~int](multiplier IN0) step.StepWrapper {
+	return stepwrapper.MultiplyBy(multiplier)
 }

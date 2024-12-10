@@ -1,8 +1,7 @@
 package steps
 
 import (
-	is "github.com/domahidizoltan/go-steps/internal/pkg/step"
-	"github.com/domahidizoltan/go-steps/types"
+	"github.com/domahidizoltan/go-steps/internal/pkg/step"
 )
 
 type (
@@ -14,11 +13,11 @@ type (
 		data I
 	}
 
-	tempSteps is.TempSteps
+	stepsContainer step.StepsContainer
 
 	transformator[T any, I inputType[T]] struct {
 		in I
-		is.Transformator
+		step.Transformator
 	}
 )
 
@@ -26,16 +25,16 @@ func Transform[T any, I inputType[T]](in I) input[T, I] {
 	return input[T, I]{in}
 }
 
-func Steps(s ...types.StepWrapper) is.TempSteps {
-	return is.Steps(s...)
+func Steps(s ...step.StepWrapper) step.StepsContainer {
+	return step.Steps(s...)
 }
 
-func (s *tempSteps) Validate() error {
+func (s *stepsContainer) Validate() error {
 	if s.Error != nil {
 		return s.Error
 	}
 
-	s.Steps, s.Error = is.GetValidatedSteps[tempSteps](s.StepWrappers)
+	s.Steps, s.Error = step.GetValidatedSteps[stepsContainer](s.StepWrappers)
 	return s.Error
 }
 
@@ -47,15 +46,15 @@ func (s *tempSteps) Validate() error {
 // 	return i.With(Steps(steps...))
 // }
 
-func (i input[T, I]) With(steps is.TempSteps) transformator[T, I] {
+func (i input[T, I]) With(steps step.StepsContainer) transformator[T, I] {
 	// validate if input T matches first step input type
 
-	_steps := tempSteps{
+	_steps := stepsContainer{
 		StepWrappers: steps.StepWrappers,
 		Aggregator:   steps.Aggregator,
 	}
 	t := transformator[T, I]{
-		Transformator: is.Transformator{
+		Transformator: step.Transformator{
 			Error: _steps.Validate(),
 		},
 	}
