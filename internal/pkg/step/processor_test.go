@@ -17,12 +17,17 @@ type validateScenario struct {
 	expected    []StepFn
 }
 
+type testStruct struct{}
+
 var (
 	filterFn = Filter(func(in int) (bool, error) {
 		return true, nil
 	})
 	mapFn = Map(func(in int) (int, error) {
 		return in + 1, nil
+	})
+	mapStrFn = Map(func(in string) (string, error) {
+		return in + "1", nil
 	})
 	splitFn = Split(func(in int) (uint8, error) {
 		return uint8(in % 2), nil
@@ -32,6 +37,13 @@ var (
 		Steps(mapFn),
 	)
 	mergeFn = Merge()
+
+	sliceToMapFn = Map(func(in int) (map[int]string, error) {
+		return map[int]string{}, nil
+	})
+	mapToStructFn = Map(func(in map[int]string) ([]testStruct, error) {
+		return []testStruct{}, nil
+	})
 )
 
 func TestGetValidatedSteps_HasNoError_WhenNoStepWrappersAreGiven(t *testing.T) {
@@ -57,6 +69,11 @@ func TestGetValidatedSteps_HasNoError(t *testing.T) {
 			wrappers: []StepWrapper{mapFn, splitFn, branchFn, mergeFn},
 			expected: []StepFn{mapFn.StepFn, splitFn.StepFn, branchFn.StepFn, mergeFn.StepFn},
 		},
+		{
+			name:     "collections_and_structs",
+			wrappers: []StepWrapper{sliceToMapFn, mapToStructFn},
+			expected: []StepFn{sliceToMapFn.StepFn, mapToStructFn.StepFn},
+		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
 			actual, err := GetValidatedSteps[int](sc.wrappers)
@@ -72,55 +89,33 @@ func TestGetValidatedSteps_HasNoError(t *testing.T) {
 func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 	for _, sc := range []validateScenario{
 		{
-			name: "input_type_is_different",
-			wrappers: []StepWrapper{Map(func(in string) (string, error) {
-				return "", nil
-			})},
-			error:       ErrTransformInputTypeIsDifferent,
-			errorDetail: "int transform input not equals with string Map step in type",
+			name:        "transform_input_type_is_different",
+			wrappers:    []StepWrapper{mapStrFn},
+			error:       ErrStepValidationFailed,
+			errorDetail: "[Map:1]: incompatible input argument type [int!=string:1]",
 		},
 		{
-			name:        "first_intype_is_empty",
-			wrappers:    []StepWrapper{{Name: "Test", InTypes: [maxArgs]reflect.Type{}}},
-			error:       ErrEmptyFirstStepInType,
-			errorDetail: "Test step in type is missing",
-		},
-		{
-			name:        "outtypes_and_next_intypes_not_matching",
-			wrappers:    []StepWrapper{mapFn, {Name: "Test", InTypes: [maxArgs]reflect.Type{reflect.TypeFor[string]()}, OutTypes: [maxArgs]reflect.Type{reflect.TypeFor[string]()}}},
-			error:       ErrStepOutAndNextInTypeIsDifferent,
-			errorDetail: "Map step at position 1 has int out type but Test step at position 2 expects string in type",
-		},
-		{
-			name:        "outtype_is_empty",
-			wrappers:    []StepWrapper{mapFn, {Name: "Test", InTypes: [maxArgs]reflect.Type{reflect.TypeFor[int]()}}},
-			error:       ErrEmptyStepOutType,
-			errorDetail: "Test step at position 2 has no out type",
+			name:        "step_input_type_is_different",
+			wrappers:    []StepWrapper{mapFn, mapStrFn},
+			error:       ErrStepValidationFailed,
+			errorDetail: "[Map:2]: incompatible input argument type [int!=string:1]",
 		},
 		{
 			name: "pointers_used_when_not_needed",
 			wrappers: []StepWrapper{mapFn, Map(func(in *int) (*int, error) {
 				return nil, nil
 			})},
-			error:       ErrStepOutAndNextInTypeIsDifferent,
-			errorDetail: "Map step at position 1 has int out type but Map step at position 2 expects *int in type",
-		},
-		{
-			name:        "validation_handles_split_and_merge",
-			wrappers:    []StepWrapper{mapFn, splitFn, mergeFn},
-			error:       ErrInnerStepValidationFailed,
-			errorDetail: "orm input not equals with *int Map step in type",
+			error:       ErrStepValidationFailed,
+			errorDetail: "[Map:2]: incompatible input argument type [int!=*int:1]",
 		},
 		{
 			name: "validation_called_inside_branch",
 			wrappers: []StepWrapper{mapFn, splitFn, WithBranches[int](
 				Steps(mapFn), Steps(Map(func(in *int) (*int, error) { return nil, nil })))},
-			error:       ErrInnerStepValidationFailed,
-			errorDetail: "WithBranches step at position 3 failed inner validation: transform input type is different from first step in type: int transform input not equals with *int Map step in type",
+			error:       ErrStepValidationFailed,
+			errorDetail: "[WithBranches:3]: step validation failed [Map:1]: incompatible input argument type [int!=*int:1]",
 		},
-
-		// split and merge
-	}[5:6] {
+	} {
 		t.Run(sc.name, func(t *testing.T) {
 			actual, err := GetValidatedSteps[int](sc.wrappers)
 			require.Empty(t, actual)
@@ -130,10 +125,6 @@ func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 	}
 }
 
-// handles primitives and structs
-// handles slices and maps
-//
-//
 // run aggregator
 // skip
 // yield simple

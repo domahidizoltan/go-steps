@@ -7,6 +7,8 @@ import (
 
 const maxArgs = 4
 
+type ArgTypes [maxArgs]reflect.Type
+
 type (
 	StepInput struct {
 		Args    [maxArgs]any
@@ -22,12 +24,9 @@ type (
 	}
 
 	StepWrapper struct {
-		Name            string
-		InTypes         [maxArgs]reflect.Type
-		OutTypes        [maxArgs]reflect.Type
-		StepFn          StepFn
-		InTypeZeroValue any
-		InnerValidator  func(reflect.Type) error
+		Name     string
+		StepFn   StepFn
+		Validate func(prevStepArgTypes ArgTypes) (ArgTypes, error)
 	}
 
 	StepFn func(StepInput) StepOutput
@@ -41,7 +40,7 @@ type (
 
 	stepType uint8
 
-	StepsContainer struct {
+	StepsBranch struct {
 		Error        error
 		StepWrappers []StepWrapper
 		Aggregator   ReducerFn
@@ -59,21 +58,21 @@ type (
 )
 
 var (
-	ErrTransformInputTypeIsDifferent   = errors.New("transform input type is different from first step in type")
-	ErrEmptyFirstStepInType            = errors.New("first step in type is empty")
-	ErrStepOutAndNextInTypeIsDifferent = errors.New("step out type is different from next step in type")
-	ErrEmptyStepOutType                = errors.New("step out type is empty")
-	ErrInnerStepValidationFailed       = errors.New("inner step validation failed")
+	ErrInnerStepValidationFailed = errors.New("inner step validation failed")
+	//---
+	ErrEmptyTransformInputType   = errors.New("first step in type is empty")
+	ErrStepValidationFailed      = errors.New("step validation failed")
+	ErrStepIncompatibleInArgType = errors.New("incompatible input argument type")
 )
 
-func Steps(s ...StepWrapper) StepsContainer {
-	return StepsContainer{
+func Steps(s ...StepWrapper) StepsBranch {
+	return StepsBranch{
 		StepWrappers: s,
 	}
 }
 
-func (t StepsContainer) Aggregate(fn ReducerWrapper) StepsContainer { //?
-	return StepsContainer{
+func (t StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch { //?
+	return StepsBranch{
 		StepWrappers: t.StepWrappers,
 		Aggregator:   fn.ReducerFn,
 	}

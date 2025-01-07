@@ -13,7 +13,7 @@ type (
 		data I
 	}
 
-	stepsContainer step.StepsContainer
+	stepsBranch step.StepsBranch
 
 	transformator[T any, I inputType[T]] struct {
 		in I
@@ -25,16 +25,16 @@ func Transform[T any, I inputType[T]](in I) input[T, I] {
 	return input[T, I]{in}
 }
 
-func Steps(s ...step.StepWrapper) step.StepsContainer {
+func Steps(s ...step.StepWrapper) step.StepsBranch {
 	return step.Steps(s...)
 }
 
-func (s *stepsContainer) Validate() error {
+func (s *stepsBranch) Validate() error {
 	if s.Error != nil {
 		return s.Error
 	}
 
-	s.Steps, s.Error = step.GetValidatedSteps[stepsContainer](s.StepWrappers)
+	s.Steps, s.Error = step.GetValidatedSteps[stepsBranch](s.StepWrappers)
 	return s.Error
 }
 
@@ -46,10 +46,10 @@ func (s *stepsContainer) Validate() error {
 // 	return i.With(Steps(steps...))
 // }
 
-func (i input[T, I]) With(steps step.StepsContainer) transformator[T, I] {
+func (i input[T, I]) With(steps step.StepsBranch) transformator[T, I] {
 	// validate if input T matches first step input type
 
-	_steps := stepsContainer{
+	_steps := stepsBranch{
 		StepWrappers: steps.StepWrappers,
 		Aggregator:   steps.Aggregator,
 	}

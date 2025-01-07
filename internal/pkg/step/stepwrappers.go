@@ -8,12 +8,6 @@ import (
 func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Map",
-		InTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[IN0](),
-		},
-		OutTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[OUT0](),
-		},
 		StepFn: func(in StepInput) StepOutput {
 			out, err := fn(in.Args[0].(IN0))
 			return StepOutput{
@@ -23,18 +17,21 @@ func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 				Skip:    err != nil,
 			}
 		},
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
+			for i := range maxArgs {
+				if prevStepOut[i] != inArgTypes[i] {
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+				}
+			}
+			return ArgTypes{reflect.TypeFor[OUT0]()}, nil
+		},
 	}
 }
 
 func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Filter",
-		InTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[IN0](),
-		},
-		OutTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[IN0](),
-		},
 		StepFn: func(in StepInput) StepOutput {
 			ok, err := fn(in.Args[0].(IN0))
 			return StepOutput{
@@ -44,24 +41,22 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 				Skip:    !ok,
 			}
 		},
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
+			for i := range maxArgs {
+				if prevStepOut[i] != inArgTypes[i] {
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+				}
+			}
+			return ArgTypes{reflect.TypeFor[IN0]()}, nil
+		},
 	}
 }
 
 type branch struct {
 	value any
-	T     reflect.Value // reflect.Type
+	T     reflect.Value
 	key   uint8
-}
-
-func Equaler(kv, other branch) bool {
-	fmt.Println(kv, other)
-	if kv == other {
-		return true
-	}
-	if kv.key == other.key && kv.value == other.value {
-		return true
-	}
-	return false
 }
 
 var branchType = reflect.TypeFor[branch]()
@@ -69,10 +64,6 @@ var branchType = reflect.TypeFor[branch]()
 func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Split",
-		InTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[IN0](),
-		},
-		OutTypes: [maxArgs]reflect.Type{branchType},
 		StepFn: func(in StepInput) StepOutput {
 			idx, err := fn(in.Args[0].(IN0))
 			out := branch{key: uint8(idx), value: in.Args[0].(IN0), T: reflect.ValueOf(in.Args[0])}
@@ -82,16 +73,22 @@ func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) StepWrapper {
 				Error:   err,
 			}
 		},
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
+			for i := range maxArgs {
+				if prevStepOut[i] != inArgTypes[i] {
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+				}
+			}
+			return ArgTypes{branchType}, nil
+		},
 	}
 }
 
 // TODO document that this is not parallel processing, because it keeps ordering
-func WithBranches[IN0 any](steps ...StepsContainer) StepWrapper {
-	var inTypeZeroValue IN0
+func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 	return StepWrapper{
-		Name:     "WithBranches",
-		InTypes:  [maxArgs]reflect.Type{branchType},
-		OutTypes: [maxArgs]reflect.Type{branchType},
+		Name: "WithBranches",
 		StepFn: func(in StepInput) StepOutput {
 			keyVal := in.Args[0].(branch)
 			val := StepInput{
@@ -99,7 +96,7 @@ func WithBranches[IN0 any](steps ...StepsContainer) StepWrapper {
 				ArgsLen: 1,
 			}
 			var out StepOutput
-			for _, stepWrapper := range steps[int(keyVal.key)].StepWrappers {
+			for _, stepWrapper := range stepsBranches[int(keyVal.key)].StepWrappers {
 				out = stepWrapper.StepFn(val)
 				val = StepInput{
 					Args:    out.Args,
@@ -116,14 +113,19 @@ func WithBranches[IN0 any](steps ...StepsContainer) StepWrapper {
 				Skip:    out.Skip,
 			}
 		},
-		InTypeZeroValue: inTypeZeroValue,
-		InnerValidator: func(firstInType reflect.Type) error {
-			for _, stepWrapper := range steps {
-				if _, err := getValidatedSteps(firstInType, stepWrapper.StepWrappers); err != nil {
-					return err
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			inArgTypes := ArgTypes{branchType}
+			for i := range maxArgs {
+				if prevStepOut[i] != inArgTypes[i] {
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i)
 				}
 			}
-			return nil
+			for _, container := range stepsBranches {
+				if _, err := GetValidatedSteps[IN0](container.StepWrappers); err != nil {
+					return ArgTypes{}, err
+				}
+			}
+			return ArgTypes{branchType}, nil
 		},
 	}
 }
@@ -131,12 +133,6 @@ func WithBranches[IN0 any](steps ...StepsContainer) StepWrapper {
 func Merge() StepWrapper {
 	return StepWrapper{
 		Name: "Merge",
-		InTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[branch](),
-		},
-		OutTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[any](), // should not be any
-		},
 		StepFn: func(in StepInput) StepOutput {
 			return StepOutput{
 				Args:    [maxArgs]any{in.Args[0].(branch).value},
@@ -144,6 +140,15 @@ func Merge() StepWrapper {
 				Error:   nil,
 				Skip:    false,
 			}
+		},
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			inArgTypes := ArgTypes{branchType}
+			for i := range maxArgs {
+				if prevStepOut[i] != inArgTypes[i] {
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+				}
+			}
+			return ArgTypes{reflect.TypeFor[any]()}, nil
 		},
 	}
 }
@@ -153,12 +158,6 @@ func Merge() StepWrapper {
 func MultiplyBy[IN0 ~int](multiplier IN0) StepWrapper {
 	return StepWrapper{
 		Name: "MultiplyBy",
-		InTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[IN0](),
-		},
-		OutTypes: [maxArgs]reflect.Type{
-			reflect.TypeFor[IN0](),
-		},
 		StepFn: func(in StepInput) StepOutput {
 			return StepOutput{
 				Args:    [maxArgs]any{in.Args[0].(IN0) * multiplier},
@@ -166,6 +165,9 @@ func MultiplyBy[IN0 ~int](multiplier IN0) StepWrapper {
 				Error:   nil,
 				Skip:    false,
 			}
+		},
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			return ArgTypes{reflect.TypeFor[IN0]()}, nil
 		},
 	}
 }

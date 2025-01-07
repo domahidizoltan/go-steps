@@ -16,7 +16,7 @@ func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) step.StepWrapper
 	return step.Split(fn)
 }
 
-func WithBranches[IN0 any](steps ...step.StepsContainer) step.StepWrapper {
+func WithBranches[IN0 any](steps ...step.StepsBranch) step.StepWrapper {
 	return step.WithBranches[IN0](steps...)
 }
 
