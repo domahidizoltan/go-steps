@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	s "github.com/domahidizoltan/go-steps"
+	"github.com/domahidizoltan/go-steps/internal/pkg/step"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -155,7 +156,11 @@ func TestSplitAndZip(t *testing.T) {
 		bz
 		fzbz
 	)
-
+	prefixWith := func(prefix string) step.StepWrapper {
+		return s.Map(func(i int) (string, error) {
+			return prefix + strconv.Itoa(i), nil
+		})
+	}
 	r, err := s.Transform[int]([]int{1, 2, 3, 4, 5, 6}).
 		With(s.Steps(
 			s.Split(func(i int) (fizzBuzz, error) {
@@ -170,20 +175,12 @@ func TestSplitAndZip(t *testing.T) {
 				return none, nil
 			}),
 			s.WithBranches[int](
-				s.Steps(s.Map(func(i int) (string, error) {
-					return strconv.Itoa(i), nil
-				})),
-				s.Steps(s.Map(func(i int) (string, error) {
-					return "fz:" + strconv.Itoa(i), nil
-				})),
-				s.Steps(s.Map(func(i int) (string, error) {
-					return "bz:" + strconv.Itoa(i), nil
-				})),
-				s.Steps(s.Map(func(i int) (string, error) {
-					return "fzbz:" + strconv.Itoa(i), nil
-				})),
+				s.Steps(prefixWith("")),
+				s.Steps(prefixWith("fz:")),
+				s.Steps(prefixWith("bz:")),
+				s.Steps(prefixWith("fzbz:")),
 			),
-			s.Zip(),
+			s.Merge(),
 		)).
 		AsRange()
 

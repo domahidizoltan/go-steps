@@ -5,33 +5,36 @@ import (
 	"reflect"
 )
 
-const MaxArgs = 4
+const maxArgs = 4
 
 type (
 	StepInput struct {
-		Args    [MaxArgs]any
+		Args    [maxArgs]any
 		ArgsLen uint8
 	}
 
 	StepOutput struct {
 		Error   error
-		Args    [MaxArgs]any
+		Args    [maxArgs]any
 		ArgsLen uint8
 		Skip    bool
 		// Accumulate bool
 	}
 
 	StepWrapper struct {
-		InTypes  [MaxArgs]reflect.Type
-		OutTypes [MaxArgs]reflect.Type
-		StepFn   StepFn
+		Name            string
+		InTypes         [maxArgs]reflect.Type
+		OutTypes        [maxArgs]reflect.Type
+		StepFn          StepFn
+		InTypeZeroValue any
+		InnerValidator  func(reflect.Type) error
 	}
 
 	StepFn func(StepInput) StepOutput
 
 	ReducerWrapper struct {
-		InTypes   [MaxArgs]reflect.Type
-		OutTypes  [MaxArgs]reflect.Type
+		InTypes   [maxArgs]reflect.Type
+		OutTypes  [maxArgs]reflect.Type
 		ReducerFn ReducerFn
 	}
 	ReducerFn func(StepInput) StepOutput
@@ -55,7 +58,13 @@ type (
 	}
 )
 
-var ErrInvalidInputType = errors.New("Invalid input type")
+var (
+	ErrTransformInputTypeIsDifferent   = errors.New("transform input type is different from first step in type")
+	ErrEmptyFirstStepInType            = errors.New("first step in type is empty")
+	ErrStepOutAndNextInTypeIsDifferent = errors.New("step out type is different from next step in type")
+	ErrEmptyStepOutType                = errors.New("step out type is empty")
+	ErrInnerStepValidationFailed       = errors.New("inner step validation failed")
+)
 
 func Steps(s ...StepWrapper) StepsContainer {
 	return StepsContainer{

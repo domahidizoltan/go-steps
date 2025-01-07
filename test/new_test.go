@@ -195,7 +195,7 @@ func BenchmarkWithBranches(b *testing.B) {
 				return "fzbz:" + strconv.Itoa(i), nil
 			})),
 		),
-		s.Zip(),
+		s.Merge(),
 	)
 
 	// steps.Validate()
