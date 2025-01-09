@@ -12,26 +12,31 @@ func (t transformator[T, I]) AsRange() (iter.Seq[any], error) {
 		return nil, t.Error
 	}
 
-	return func(yield func(any) bool) {
+	var err error
+	yieldFn := func(yield func(any) bool) {
+		var terminated bool
 		switch in := any(t.in).(type) {
 		case chan T:
 			// TODO check if closed for lastItem
 			for v := range in {
-				if is.Process(v, yield, &t.Transformator, false) {
+				terminated, err = is.Process(v, yield, &t.Transformator, false)
+				if terminated || err != nil {
 					break
 				}
 			}
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				if is.Process(v, yield, &t.Transformator, idx == lastIdx) {
+				terminated, err = is.Process(v, yield, &t.Transformator, idx == lastIdx)
+				if terminated || err != nil {
 					break
 				}
 			}
 		default:
 			panic("unsupported input type")
 		}
-	}, nil
+	}
+	return yieldFn, err
 }
 
 // TODO alias for AsKeyValueRange()
@@ -40,26 +45,31 @@ func (t transformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) {
 		return nil, t.Error
 	}
 
-	return func(yield func(any, any) bool) {
+	var err error
+	yieldFn := func(yield func(any, any) bool) {
+		var terminated bool
 		switch in := any(t.in).(type) {
 		case chan T:
 			idx := 0
 			for v := range in {
-				if is.ProcessIndexed(idx, v, yield, &t.Transformator, false) {
+				terminated, err = is.ProcessIndexed(idx, v, yield, &t.Transformator, false)
+				if terminated || err != nil {
 					break
 				}
 			}
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				if is.ProcessIndexed(idx, v, yield, &t.Transformator, idx == lastIdx) {
+				terminated, err = is.ProcessIndexed(idx, v, yield, &t.Transformator, idx == lastIdx)
+				if terminated || err != nil {
 					break
 				}
 			}
 		default:
 			panic("unsupported input type")
 		}
-	}, nil
+	}
+	return yieldFn, nil
 }
 
 func (t transformator[T, I]) AsMap() (map[any][]any, error) {

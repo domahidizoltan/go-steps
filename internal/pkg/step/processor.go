@@ -27,49 +27,62 @@ func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, error) {
 	return validSteps, nil
 }
 
-func Process[V any](v V, yield func(any) bool, transformator *Transformator, isLastItem bool) bool {
-	in, skipped := getProcessResult(v, transformator)
-
-	if transformator.LastAggregatedValue != nil && isLastItem {
-		return yield(transformator.LastAggregatedValue.Args[0])
+func Process[V any](val V, yield func(any) bool, transformator *Transformator, isLastItem bool) (bool, error) {
+	out, skipped := getProcessResult(val, transformator)
+	if out.Error != nil {
+		return false, out.Error
 	}
 
-	if !skipped && !yield(in.Args[0]) {
-		return true
+	aggOut := transformator.LastAggregatedValue
+	if aggOut != nil {
+		if aggOut.Error != nil {
+			return false, aggOut.Error
+		}
+		if isLastItem {
+			return yield(aggOut.Args[0]), nil
+		}
 	}
 
-	return false
+	terminated := skipped || !yield(out.Args[0])
+	return terminated, nil
 }
 
-func ProcessIndexed[V any](k any, v V, yield func(any, any) bool, transformator *Transformator, isLastItem bool) bool {
-	in, skipped := getProcessResult(v, transformator)
-
-	idx := k
-	val := in.Args[0]
-	if in.ArgsLen > 1 {
-		idx = in.Args[0]
-		val = in.Args[1]
+func ProcessIndexed[V any](key any, val V, yield func(any, any) bool, transformator *Transformator, isLastItem bool) (bool, error) {
+	out, skipped := getProcessResult(val, transformator)
+	if out.Error != nil {
+		return false, out.Error
 	}
 
-	if transformator.LastAggregatedValue != nil && isLastItem {
-		return yield(idx, transformator.LastAggregatedValue.Args[0])
+	idx := key
+	v := out.Args[0]
+	if out.ArgsLen > 1 {
+		idx = out.Args[0]
+		v = out.Args[1]
 	}
 
-	if !skipped && !yield(idx, val) {
-		return true
+	aggOut := transformator.LastAggregatedValue
+	if aggOut != nil {
+		if aggOut.Error != nil {
+			return false, aggOut.Error
+		}
+		if isLastItem {
+			return yield(idx, aggOut.Args[0]), nil
+		}
 	}
 
-	return false
+	terminated := skipped || !yield(idx, v)
+	return terminated, nil
 }
 
-func getProcessResult[V any](v V, transformator *Transformator) (StepInput, bool) {
+func getProcessResult[V any](val V, transformator *Transformator) (StepOutput, bool) {
 	in := StepInput{
-		Args:    [4]any{v},
+		Args:    [4]any{val},
 		ArgsLen: 1,
 	}
 	var skipped bool
+	var out StepOutput
 	for _, fn := range transformator.Steps {
-		out := fn(in)
+		out = fn(in)
 		if out.Skip || out.Error != nil {
 			skipped = true
 			break
@@ -82,17 +95,10 @@ func getProcessResult[V any](v V, transformator *Transformator) (StepInput, bool
 	}
 
 	if !skipped && transformator.Aggregator != nil {
-		out := transformator.Aggregator(in)
+		out = transformator.Aggregator(in)
 		transformator.LastAggregatedValue = &out
-
-		if out.Error == nil {
-			in = StepInput{
-				Args:    out.Args,
-				ArgsLen: out.ArgsLen,
-			}
-		}
 		skipped = true
 	}
 
-	return in, skipped
+	return out, skipped
 }

@@ -1,6 +1,7 @@
 package step
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -21,7 +22,7 @@ type testStruct struct{}
 
 var (
 	filterFn = Filter(func(in int) (bool, error) {
-		return true, nil
+		return in%2 == 0, nil
 	})
 	mapFn = Map(func(in int) (int, error) {
 		return in + 1, nil
@@ -125,7 +126,173 @@ func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 	}
 }
 
-// run aggregator
-// skip
-// yield simple
-// yield indexed
+type processScenario[T any] struct {
+	name       string
+	input      int
+	output     T
+	outputKey  *string
+	terminated bool
+	err        error
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
+func TestProcess(t *testing.T) {
+	for _, sc := range []processScenario[*int]{
+		{
+			name:   "value_processed",
+			input:  2,
+			output: ptr(3),
+		}, {
+			name:       "value_skipped",
+			input:      1,
+			terminated: true,
+		}, {
+			name:  "step_returns_error",
+			input: 2,
+			err:   errors.New("map error"),
+		},
+	} {
+		t.Run(sc.name, func(t *testing.T) {
+			var processedValue *int
+			yield := func(in any) bool {
+				processedValue = ptr(in.(int))
+				return true
+			}
+			mapFn := Map(func(in int) (int, error) {
+				return in + 1, sc.err
+			})
+			trn := &Transformator{
+				Steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
+			}
+
+			terminated, err := Process(sc.input, yield, trn, false)
+
+			assert.Equal(t, sc.terminated, terminated)
+			assert.Equal(t, sc.err, err)
+			assert.Equal(t, sc.output, processedValue)
+		})
+	}
+}
+
+func TestProcessAndAggregate(t *testing.T) {
+	for _, sc := range []processScenario[map[bool][]int]{
+		{
+			name:       "value_processed",
+			input:      2,
+			output:     map[bool][]int{true: {2}},
+			terminated: true,
+		}, {
+			name:  "reducer_returns_error",
+			input: 2,
+			err:   errors.New("reducer error"),
+		},
+	} {
+		t.Run(sc.name, func(t *testing.T) {
+			var processedValue map[bool][]int
+			yield := func(in any) bool {
+				processedValue = in.(map[bool][]int)
+				return true
+			}
+			groupEven := GroupBy(func(in int) (bool, int, error) {
+				return true, 2, sc.err
+			})
+
+			trn := &Transformator{
+				Steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
+				Aggregator: groupEven.ReducerFn,
+			}
+
+			terminated, err := Process(sc.input, yield, trn, true)
+
+			assert.Equal(t, sc.terminated, terminated)
+			assert.Equal(t, sc.err, err)
+			assert.Equal(t, sc.output, processedValue)
+		})
+	}
+}
+
+func TestProcessIndexed(t *testing.T) {
+	for _, sc := range []processScenario[*int]{
+		{
+			name:      "value_processed",
+			input:     2,
+			outputKey: ptr("value_processed"),
+			output:    ptr(3),
+		}, {
+			name:       "value_skipped",
+			input:      1,
+			terminated: true,
+		}, {
+			name:  "step_returns_error",
+			input: 2,
+			err:   errors.New("map error"),
+		},
+	} {
+		t.Run(sc.name, func(t *testing.T) {
+			var processedKey *string
+			var processedValue *int
+			yield := func(idx, in any) bool {
+				processedKey = ptr(idx.(string))
+				processedValue = ptr(in.(int))
+				return true
+			}
+			mapFn := Map(func(in int) (int, error) {
+				return in + 1, sc.err
+			})
+			trn := &Transformator{
+				Steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
+			}
+
+			terminated, err := ProcessIndexed(sc.name, sc.input, yield, trn, false)
+
+			assert.Equal(t, sc.terminated, terminated)
+			assert.Equal(t, sc.err, err)
+			assert.Equal(t, sc.output, processedValue)
+			assert.Equal(t, sc.outputKey, processedKey)
+		})
+	}
+}
+
+func TestProcessIndexedAndAggregate(t *testing.T) {
+	for _, sc := range []processScenario[map[bool][]int]{
+		{
+			name:       "value_processed",
+			input:      2,
+			output:     map[bool][]int{true: {2}},
+			outputKey:  ptr("value_processed"),
+			terminated: true,
+		}, {
+			name:  "reducer_returns_error",
+			input: 2,
+			err:   errors.New("reducer error"),
+		},
+	} {
+		t.Run(sc.name, func(t *testing.T) {
+			var processedKey *string
+			var processedValue map[bool][]int
+			yield := func(idx, in any) bool {
+				processedKey = ptr(idx.(string))
+				processedValue = in.(map[bool][]int)
+				return true
+			}
+			groupEven := GroupBy(func(in int) (bool, int, error) {
+				return true, 2, sc.err
+			})
+
+			trn := &Transformator{
+				Steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
+				Aggregator: groupEven.ReducerFn,
+			}
+
+			terminated, err := ProcessIndexed(sc.name, sc.input, yield, trn, true)
+
+			assert.Equal(t, sc.terminated, terminated)
+			assert.Equal(t, sc.err, err)
+			assert.Equal(t, sc.output, processedValue)
+			assert.Equal(t, sc.outputKey, processedKey)
+		})
+	}
+}
