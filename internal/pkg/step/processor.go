@@ -5,9 +5,9 @@ import (
 	"reflect"
 )
 
-func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, error) {
+func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, error) {
 	if len(stepWrappers) == 0 {
-		return nil, nil
+		return nil, ArgTypes{}, nil
 	}
 	validSteps := make([]StepFn, 0, len(stepWrappers))
 
@@ -17,14 +17,14 @@ func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, error) {
 	for pos, wrapper := range stepWrappers {
 		ot, err := wrapper.Validate(outTypes)
 		if err != nil {
-			return nil, fmt.Errorf("%w [%s:%d]: %w", ErrStepValidationFailed, stepWrappers[pos].Name, pos+1, err)
+			return nil, ArgTypes{}, fmt.Errorf("%w [%s:%d]: %w", ErrStepValidationFailed, stepWrappers[pos].Name, pos+1, err)
 		}
 		outTypes = ot
 
 		validSteps = append(validSteps, StepFn(wrapper.StepFn))
 	}
 
-	return validSteps, nil
+	return validSteps, outTypes, nil
 }
 
 func Process[V any](val V, yield func(any) bool, transformator *Transformator, isLastItem bool) (bool, error) {

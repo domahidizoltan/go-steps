@@ -48,7 +48,7 @@ var (
 )
 
 func TestGetValidatedSteps_HasNoError_WhenNoStepWrappersAreGiven(t *testing.T) {
-	actual, err := GetValidatedSteps[any](nil)
+	actual, _, err := GetValidatedSteps[any](nil)
 	require.NoError(t, err)
 	assert.Nil(t, actual)
 }
@@ -77,7 +77,7 @@ func TestGetValidatedSteps_HasNoError(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			actual, err := GetValidatedSteps[int](sc.wrappers)
+			actual, _, err := GetValidatedSteps[int](sc.wrappers)
 			require.NoError(t, err)
 			assert.Len(t, sc.expected, len(actual))
 			for i, act := range actual {
@@ -118,7 +118,7 @@ func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			actual, err := GetValidatedSteps[int](sc.wrappers)
+			actual, _, err := GetValidatedSteps[int](sc.wrappers)
 			require.Empty(t, actual)
 			assert.ErrorIs(t, err, sc.error, fmt.Sprintf("unexpected error: %s", err.Error()))
 			assert.Contains(t, err.Error(), sc.errorDetail, fmt.Sprintf("unexpected error detail: %s", err.Error()))

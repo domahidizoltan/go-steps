@@ -21,7 +21,7 @@ func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
 			for i := range maxArgs {
 				if prevStepOut[i] != inArgTypes[i] {
-					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
 				}
 			}
 			return ArgTypes{reflect.TypeFor[OUT0]()}, nil
@@ -45,7 +45,7 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
 			for i := range maxArgs {
 				if prevStepOut[i] != inArgTypes[i] {
-					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
 				}
 			}
 			return ArgTypes{reflect.TypeFor[IN0]()}, nil
@@ -77,7 +77,7 @@ func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) StepWrapper {
 			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
 			for i := range maxArgs {
 				if prevStepOut[i] != inArgTypes[i] {
-					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
 				}
 			}
 			return ArgTypes{branchType}, nil
@@ -117,11 +117,11 @@ func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 			inArgTypes := ArgTypes{branchType}
 			for i := range maxArgs {
 				if prevStepOut[i] != inArgTypes[i] {
-					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i)
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i)
 				}
 			}
 			for _, container := range stepsBranches {
-				if _, err := GetValidatedSteps[IN0](container.StepWrappers); err != nil {
+				if _, _, err := GetValidatedSteps[IN0](container.StepWrappers); err != nil {
 					return ArgTypes{}, err
 				}
 			}
@@ -145,7 +145,7 @@ func Merge() StepWrapper {
 			inArgTypes := ArgTypes{branchType}
 			for i := range maxArgs {
 				if prevStepOut[i] != inArgTypes[i] {
-					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrStepIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
 				}
 			}
 			return ArgTypes{reflect.TypeFor[any]()}, nil

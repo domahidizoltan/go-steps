@@ -34,7 +34,17 @@ func (s *stepsBranch) Validate() error {
 		return s.Error
 	}
 
-	s.Steps, s.Error = step.GetValidatedSteps[stepsBranch](s.StepWrappers)
+	var lastOutTypes step.ArgTypes
+	s.Steps, lastOutTypes, s.Error = step.GetValidatedSteps[stepsBranch](s.StepWrappers)
+
+	if s.AggregatorWrapper != nil {
+		if s.Error != nil {
+			return s.Error
+		}
+
+		_, s.Error = s.AggregatorWrapper.Validate(lastOutTypes)
+	}
+
 	return s.Error
 }
 

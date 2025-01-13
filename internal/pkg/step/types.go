@@ -20,7 +20,6 @@ type (
 		Args    [maxArgs]any
 		ArgsLen uint8
 		Skip    bool
-		// Accumulate bool
 	}
 
 	StepWrapper struct {
@@ -32,20 +31,21 @@ type (
 	StepFn func(StepInput) StepOutput
 
 	ReducerWrapper struct {
-		InTypes   [maxArgs]reflect.Type
-		OutTypes  [maxArgs]reflect.Type
+		Name      string
 		ReducerFn ReducerFn
+		Validate  func(prevStepArgTypes ArgTypes) (ArgTypes, error)
 	}
 	ReducerFn func(StepInput) StepOutput
 
 	stepType uint8
 
 	StepsBranch struct {
-		Error        error
-		StepWrappers []StepWrapper
-		Aggregator   ReducerFn
-		Steps        []StepFn
-		Validated    stepType
+		Error             error
+		StepWrappers      []StepWrapper
+		AggregatorWrapper *ReducerWrapper
+		Aggregator        ReducerFn
+		Steps             []StepFn
+		Validated         stepType
 	}
 
 	Transformator struct {
@@ -58,11 +58,9 @@ type (
 )
 
 var (
-	ErrInnerStepValidationFailed = errors.New("inner step validation failed")
-	//---
-	ErrEmptyTransformInputType   = errors.New("first step in type is empty")
-	ErrStepValidationFailed      = errors.New("step validation failed")
-	ErrStepIncompatibleInArgType = errors.New("incompatible input argument type")
+	ErrEmptyTransformInputType = errors.New("first step in type is empty")
+	ErrStepValidationFailed    = errors.New("step validation failed")
+	ErrIncompatibleInArgType   = errors.New("incompatible input argument type")
 )
 
 func Steps(s ...StepWrapper) StepsBranch {
