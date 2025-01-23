@@ -2,21 +2,12 @@ package step
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type validateScenario struct {
-	name        string
-	error       error
-	errorDetail string
-	wrappers    []StepWrapper
-	expected    []StepFn
-}
 
 type testStruct struct{}
 
@@ -54,23 +45,26 @@ func TestGetValidatedSteps_HasNoError_WhenNoStepWrappersAreGiven(t *testing.T) {
 }
 
 func TestGetValidatedSteps_HasNoError(t *testing.T) {
-	for _, sc := range []validateScenario{
+	type scenario struct {
+		name     string
+		wrappers []StepWrapper
+		expected []StepFn
+	}
+
+	for _, sc := range []scenario{
 		{
 			name:     "single_wrapper",
 			wrappers: []StepWrapper{mapFn},
 			expected: []StepFn{mapFn.StepFn},
-		},
-		{
+		}, {
 			name:     "multiple_wrappers",
 			wrappers: []StepWrapper{mapFn, filterFn},
 			expected: []StepFn{mapFn.StepFn, filterFn.StepFn},
-		},
-		{
+		}, {
 			name:     "branch_wrappers",
 			wrappers: []StepWrapper{mapFn, splitFn, branchFn, mergeFn},
 			expected: []StepFn{mapFn.StepFn, splitFn.StepFn, branchFn.StepFn, mergeFn.StepFn},
-		},
-		{
+		}, {
 			name:     "collections_and_structs",
 			wrappers: []StepWrapper{sliceToMapFn, mapToStructFn},
 			expected: []StepFn{sliceToMapFn.StepFn, mapToStructFn.StepFn},
@@ -88,28 +82,32 @@ func TestGetValidatedSteps_HasNoError(t *testing.T) {
 }
 
 func TestGetValidatedSteps_ReturnsError(t *testing.T) {
-	for _, sc := range []validateScenario{
+	type scenario struct {
+		name        string
+		error       error
+		errorDetail string
+		wrappers    []StepWrapper
+	}
+
+	for _, sc := range []scenario{
 		{
 			name:        "transform_input_type_is_different",
 			wrappers:    []StepWrapper{mapStrFn},
 			error:       ErrStepValidationFailed,
 			errorDetail: "[Map:1]: incompatible input argument type [int!=string:1]",
-		},
-		{
+		}, {
 			name:        "step_input_type_is_different",
 			wrappers:    []StepWrapper{mapFn, mapStrFn},
 			error:       ErrStepValidationFailed,
 			errorDetail: "[Map:2]: incompatible input argument type [int!=string:1]",
-		},
-		{
+		}, {
 			name: "pointers_used_when_not_needed",
 			wrappers: []StepWrapper{mapFn, Map(func(in *int) (*int, error) {
 				return nil, nil
 			})},
 			error:       ErrStepValidationFailed,
 			errorDetail: "[Map:2]: incompatible input argument type [int!=*int:1]",
-		},
-		{
+		}, {
 			name: "validation_called_inside_branch",
 			wrappers: []StepWrapper{mapFn, splitFn, WithBranches[int](
 				Steps(mapFn), Steps(Map(func(in *int) (*int, error) { return nil, nil })))},
@@ -120,19 +118,10 @@ func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			actual, _, err := GetValidatedSteps[int](sc.wrappers)
 			require.Empty(t, actual)
-			assert.ErrorIs(t, err, sc.error, fmt.Sprintf("unexpected error: %s", err.Error()))
-			assert.Contains(t, err.Error(), sc.errorDetail, fmt.Sprintf("unexpected error detail: %s", err.Error()))
+			assert.ErrorIsf(t, err, sc.error, "unexpected error: %s", err.Error())
+			assert.Containsf(t, err.Error(), sc.errorDetail, "unexpected error detail: %s", err.Error())
 		})
 	}
-}
-
-type processScenario[T any] struct {
-	name       string
-	input      int
-	output     T
-	outputKey  *string
-	terminated bool
-	err        error
 }
 
 func ptr[T any](v T) *T {
@@ -140,7 +129,15 @@ func ptr[T any](v T) *T {
 }
 
 func TestProcess(t *testing.T) {
-	for _, sc := range []processScenario[*int]{
+	type scenario[T any] struct {
+		name       string
+		input      int
+		output     T
+		terminated bool
+		err        error
+	}
+
+	for _, sc := range []scenario[*int]{
 		{
 			name:   "value_processed",
 			input:  2,
@@ -178,7 +175,15 @@ func TestProcess(t *testing.T) {
 }
 
 func TestProcessAndAggregate(t *testing.T) {
-	for _, sc := range []processScenario[map[bool][]int]{
+	type scenario[T any] struct {
+		name       string
+		input      int
+		output     T
+		terminated bool
+		err        error
+	}
+
+	for _, sc := range []scenario[map[bool][]int]{
 		{
 			name:       "value_processed",
 			input:      2,
@@ -215,7 +220,16 @@ func TestProcessAndAggregate(t *testing.T) {
 }
 
 func TestProcessIndexed(t *testing.T) {
-	for _, sc := range []processScenario[*int]{
+	type scenario[T any] struct {
+		name       string
+		input      int
+		output     T
+		outputKey  *string
+		terminated bool
+		err        error
+	}
+
+	for _, sc := range []scenario[*int]{
 		{
 			name:      "value_processed",
 			input:     2,
@@ -257,7 +271,16 @@ func TestProcessIndexed(t *testing.T) {
 }
 
 func TestProcessIndexedAndAggregate(t *testing.T) {
-	for _, sc := range []processScenario[map[bool][]int]{
+	type scenario[T any] struct {
+		name       string
+		input      int
+		output     T
+		outputKey  *string
+		terminated bool
+		err        error
+	}
+
+	for _, sc := range []scenario[map[bool][]int]{
 		{
 			name:       "value_processed",
 			input:      2,

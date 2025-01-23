@@ -22,6 +22,9 @@ func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, er
 		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
 			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
 			for i := range maxArgs {
+				if i == 0 && prevStepOut[0] == reflect.TypeFor[SkipFirstArgValidation]() {
+					continue
+				}
 				if prevStepOut[i] != inArgTypes[i] {
 					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
 				}

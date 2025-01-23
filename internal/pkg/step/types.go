@@ -37,15 +37,12 @@ type (
 	}
 	ReducerFn func(StepInput) StepOutput
 
-	stepType uint8
-
 	StepsBranch struct {
 		Error             error
 		StepWrappers      []StepWrapper
 		AggregatorWrapper *ReducerWrapper
 		Aggregator        ReducerFn
 		Steps             []StepFn
-		Validated         stepType
 	}
 
 	Transformator struct {
@@ -53,8 +50,9 @@ type (
 		Aggregator          ReducerFn
 		LastAggregatedValue *StepOutput
 		Steps               []StepFn
-		Validated           stepType
 	}
+
+	SkipFirstArgValidation struct{}
 )
 
 var (
@@ -66,12 +64,5 @@ var (
 func Steps(s ...StepWrapper) StepsBranch {
 	return StepsBranch{
 		StepWrappers: s,
-	}
-}
-
-func (t StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch { //?
-	return StepsBranch{
-		StepWrappers: t.StepWrappers,
-		Aggregator:   fn.ReducerFn,
 	}
 }
