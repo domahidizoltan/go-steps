@@ -9,25 +9,25 @@ type (
 		chan T | []T
 	}
 
-	input[T any, I inputType[T]] struct {
-		data I
+	input[T any, IT inputType[T]] struct {
+		data IT
 	}
 
 	transformator struct {
-		Error               error
-		Aggregator          ReducerFn
-		LastAggregatedValue *StepOutput
-		Steps               []StepFn
+		error               error
+		aggregator          ReducerFn
+		lastAggregatedValue *StepOutput
+		steps               []StepFn
 	}
 
-	stepsTransformator[T any, I inputType[T]] struct {
-		in I
+	stepsTransformator[T any, IT inputType[T]] struct {
+		input IT
 		transformator
 	}
 )
 
-func Transform[T any, I inputType[T]](in I) input[T, I] {
-	return input[T, I]{in}
+func Transform[T any, IT inputType[T]](in IT) input[T, IT] {
+	return input[T, IT]{in}
 }
 
 // TODO .WithOptions to add debug options, transformator name, etc
@@ -37,24 +37,24 @@ func Steps(s ...StepWrapper) StepsBranch {
 	}
 }
 
-func (i input[T, I]) WithSteps(steps ...StepWrapper) stepsTransformator[T, I] {
+func (i input[T, IT]) WithSteps(steps ...StepWrapper) stepsTransformator[T, IT] {
 	return i.With(Steps(steps...))
 }
 
-func (i input[T, I]) With(steps StepsBranch) stepsTransformator[T, I] {
-	t := stepsTransformator[T, I]{
+func (i input[T, IT]) With(steps StepsBranch) stepsTransformator[T, IT] {
+	t := stepsTransformator[T, IT]{
 		transformator: transformator{
-			Error: steps.Validate(),
+			error: steps.Validate(),
 		},
 	}
-	if t.Error != nil {
+	if t.error != nil {
 		return t
 	}
 
-	t.in = i.data
-	t.Steps = steps.Steps
+	t.input = i.data
+	t.steps = steps.Steps
 	if steps.AggregatorWrapper != nil {
-		t.Aggregator = steps.AggregatorWrapper.ReducerFn
+		t.aggregator = steps.AggregatorWrapper.ReducerFn
 	}
 	return t
 }

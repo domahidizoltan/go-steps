@@ -158,14 +158,14 @@ func TestSliceTransformator(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			assert.Equal(t, sc.expectedData, sc.transformator.in)
-			matchSteps(t, sc.expectedSteps, sc.transformator.Steps)
-			matchAggregator(t, sc.expectedAggregator, sc.transformator.Aggregator)
+			assert.Equal(t, sc.expectedData, sc.transformator.input)
+			matchSteps(t, sc.expectedSteps, sc.transformator.steps)
+			matchAggregator(t, sc.expectedAggregator, sc.transformator.aggregator)
 
 			if sc.hasError {
-				assert.Error(t, sc.transformator.Error)
+				assert.Error(t, sc.transformator.error)
 			} else {
-				assert.NoError(t, sc.transformator.Error)
+				assert.NoError(t, sc.transformator.error)
 			}
 		})
 	}
@@ -211,14 +211,14 @@ func TestChanTransformator(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			assert.Equal(t, sc.expectedData, sc.transformator.in)
-			matchSteps(t, sc.expectedSteps, sc.transformator.Steps)
-			matchAggregator(t, sc.expectedAggregator, sc.transformator.Aggregator)
+			assert.Equal(t, sc.expectedData, sc.transformator.input)
+			matchSteps(t, sc.expectedSteps, sc.transformator.steps)
+			matchAggregator(t, sc.expectedAggregator, sc.transformator.aggregator)
 
 			if sc.hasError {
-				assert.Error(t, sc.transformator.Error)
+				assert.Error(t, sc.transformator.error)
 			} else {
-				assert.NoError(t, sc.transformator.Error)
+				assert.NoError(t, sc.transformator.error)
 			}
 		})
 	}

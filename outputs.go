@@ -1,38 +1,51 @@
 package steps
 
 import (
+	"fmt"
 	"iter"
 	"reflect"
 )
 
-func (t stepsTransformator[T, I]) AsRange() (iter.Seq[any], error) {
-	if t.Error != nil {
-		return nil, t.Error
+func emptyErrorHandler[T any, IT inputType[T]](t stepsTransformator[T, IT]) func(error) {
+	return func(err error) {
+		_ = t
+		fmt.Println("error occured:", err)
+	}
+}
+
+func (t stepsTransformator[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any] {
+	if errorHandler == nil {
+		errorHandler = emptyErrorHandler(t)
 	}
 
-	var err error
-	yieldFn := func(yield func(any) bool) {
-		var skipped, terminated bool
-		switch in := any(t.in).(type) {
+	return func(yield func(any) bool) {
+		if t.error != nil {
+			errorHandler(t.error)
+			return
+		}
+
+		var terminated bool
+		var err error
+		switch in := any(t.input).(type) {
 		case chan T:
 			// TODO check if closed for lastItem
 			for v := range in {
-				skipped, terminated, err = process(v, yield, &t.transformator, false)
-				if skipped {
-					continue
-				}
+				_, terminated, err = process(v, yield, &t.transformator, false)
 				if terminated || err != nil {
+					if err != nil {
+						errorHandler(err)
+					}
 					break
 				}
 			}
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				skipped, terminated, err = process(v, yield, &t.transformator, idx == lastIdx)
-				if skipped {
-					continue
-				}
+				_, terminated, err = process(v, yield, &t.transformator, idx == lastIdx)
 				if terminated || err != nil {
+					if err != nil {
+						errorHandler(err)
+					}
 					break
 				}
 			}
@@ -40,38 +53,46 @@ func (t stepsTransformator[T, I]) AsRange() (iter.Seq[any], error) {
 			panic("unsupported input type")
 		}
 	}
-	return yieldFn, err
 }
 
-// TODO alias for AsKeyValueRange()
-func (t stepsTransformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) {
-	if t.Error != nil {
-		return nil, t.Error
+func (t stepsTransformator[T, IT]) AsKeyValueRange(errorHandler func(error)) iter.Seq2[any, any] {
+	return t.AsIndexedRange(errorHandler)
+}
+
+func (t stepsTransformator[T, IT]) AsIndexedRange(errorHandler func(error)) iter.Seq2[any, any] {
+	if errorHandler == nil {
+		errorHandler = emptyErrorHandler(t)
 	}
 
-	var err error
-	yieldFn := func(yield func(any, any) bool) {
-		var skipped, terminated bool
-		switch in := any(t.in).(type) {
+	return func(yield func(any, any) bool) {
+		if t.error != nil {
+			errorHandler(t.error)
+			return
+		}
+
+		var terminated bool
+		var err error
+		switch in := any(t.input).(type) {
 		case chan T:
 			idx := 0
 			for v := range in {
-				skipped, terminated, err = processIndexed(idx, v, yield, &t.transformator, false)
-				if skipped {
-					continue
-				}
+				_, terminated, err = processIndexed(idx, v, yield, &t.transformator, false)
 				if terminated || err != nil {
+					if err != nil {
+						errorHandler(err)
+					}
 					break
 				}
+				idx++
 			}
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				skipped, terminated, err = processIndexed(idx, v, yield, &t.transformator, idx == lastIdx)
-				if skipped {
-					continue
-				}
+				_, terminated, err = processIndexed(idx, v, yield, &t.transformator, idx == lastIdx)
 				if terminated || err != nil {
+					if err != nil {
+						errorHandler(err)
+					}
 					break
 				}
 			}
@@ -79,17 +100,12 @@ func (t stepsTransformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) 
 			panic("unsupported input type")
 		}
 	}
-	return yieldFn, nil
 }
 
-func (t stepsTransformator[T, I]) AsMap() (map[any][]any, error) {
-	r, err := t.AsIndexedRange()
-	if err != nil {
-		return nil, err
-	}
-
+func (t stepsTransformator[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]any {
 	var acc any
-	for _, v := range r {
+	for _, v := range t.AsIndexedRange(errorHandler) {
+		fmt.Printf("__ %+v\n", reflect.ValueOf(v))
 		acc = v
 	}
 
@@ -104,5 +120,22 @@ func (t stepsTransformator[T, I]) AsMap() (map[any][]any, error) {
 		k := iter.Key().Interface()
 		res[k] = vRes
 	}
-	return res, nil
+	return res
+}
+
+func (t stepsTransformator[T, IT]) AsMap(errorHandler func(error)) map[any]any {
+	res := map[any]any{}
+	for k, v := range t.AsIndexedRange(errorHandler) {
+		res[k] = v
+	}
+	return res
+}
+
+func (t stepsTransformator[T, IT]) AsSlice(errorHandler func(error)) []any {
+	var res []any
+	for v := range t.AsRange(errorHandler) {
+		res = append(res, v)
+	}
+
+	return res
 }

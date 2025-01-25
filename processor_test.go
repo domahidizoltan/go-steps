@@ -53,6 +53,10 @@ func TestGetValidatedSteps_HasNoError(t *testing.T) {
 
 	for _, sc := range []scenario{
 		{
+			name:     "empty_wrappers",
+			wrappers: []StepWrapper{},
+			expected: []StepFn{},
+		}, {
 			name:     "single_wrapper",
 			wrappers: []StepWrapper{mapFn},
 			expected: []StepFn{mapFn.StepFn},
@@ -162,7 +166,7 @@ func TestProcess(t *testing.T) {
 				return in + 1, sc.err
 			})
 			trn := &transformator{
-				Steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
+				steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 			}
 
 			skipped, _, err := process(sc.input, yield, trn, false)
@@ -206,8 +210,8 @@ func TestProcessAndAggregate(t *testing.T) {
 			})
 
 			trn := &transformator{
-				Steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
-				Aggregator: groupEven.ReducerFn,
+				steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
+				aggregator: groupEven.ReducerFn,
 			}
 
 			_, terminated, err := process(sc.input, yield, trn, true)
@@ -257,7 +261,7 @@ func TestProcessIndexed(t *testing.T) {
 				return in + 1, sc.err
 			})
 			trn := &transformator{
-				Steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
+				steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 			}
 
 			skipped, _, err := processIndexed(sc.name, sc.input, yield, trn, false)
@@ -306,8 +310,8 @@ func TestProcessIndexedAndAggregate(t *testing.T) {
 			})
 
 			trn := &transformator{
-				Steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
-				Aggregator: groupEven.ReducerFn,
+				steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
+				aggregator: groupEven.ReducerFn,
 			}
 
 			_, terminated, err := processIndexed(sc.name, sc.input, yield, trn, true)
@@ -318,4 +322,18 @@ func TestProcessIndexedAndAggregate(t *testing.T) {
 			assert.Equal(t, sc.outputKey, processedKey)
 		})
 	}
+}
+
+func TestProcessYieldsRawInput_WhenStepsMissing(t *testing.T) {
+	var processedValue *int
+	yield := func(in any) bool {
+		processedValue = ptr(in.(int))
+		return true
+	}
+
+	skipped, _, err := process(42, yield, nil, false)
+
+	assert.False(t, skipped)
+	assert.NoError(t, err)
+	assert.Equal(t, 42, *processedValue)
 }

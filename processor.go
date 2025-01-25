@@ -28,11 +28,16 @@ func getValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, e
 }
 
 func process[V any](val V, yield func(any) bool, transformator *transformator, isLastItem bool) (bool, bool, error) {
+	if transformator == nil {
+		return false, !yield(val), nil
+	}
+
 	out, skipped := getProcessResult(val, transformator)
 	if out.Error != nil {
 		return false, false, out.Error
 	}
-	aggOut := transformator.LastAggregatedValue
+
+	aggOut := transformator.lastAggregatedValue
 	if aggOut != nil {
 		if aggOut.Error != nil {
 			return false, false, aggOut.Error
@@ -49,6 +54,10 @@ func process[V any](val V, yield func(any) bool, transformator *transformator, i
 }
 
 func processIndexed[V any](key any, val V, yield func(any, any) bool, transformator *transformator, isLastItem bool) (bool, bool, error) {
+	if transformator == nil {
+		return false, !yield(key, val), nil
+	}
+
 	out, skipped := getProcessResult(val, transformator)
 	if out.Error != nil {
 		return false, false, out.Error
@@ -61,7 +70,7 @@ func processIndexed[V any](key any, val V, yield func(any, any) bool, transforma
 		v = out.Args[1]
 	}
 
-	aggOut := transformator.LastAggregatedValue
+	aggOut := transformator.lastAggregatedValue
 	if aggOut != nil {
 		if aggOut.Error != nil {
 			return false, false, aggOut.Error
@@ -78,13 +87,20 @@ func processIndexed[V any](key any, val V, yield func(any, any) bool, transforma
 }
 
 func getProcessResult[V any](val V, transformator *transformator) (StepOutput, bool) {
+	if transformator == nil || len(transformator.steps) == 0 {
+		return StepOutput{
+			Args:    [4]any{val},
+			ArgsLen: 1,
+		}, false
+	}
+
 	in := StepInput{
 		Args:    [4]any{val},
 		ArgsLen: 1,
 	}
 	var skipped bool
 	var out StepOutput
-	for _, fn := range transformator.Steps {
+	for _, fn := range transformator.steps {
 		out = fn(in)
 		if out.Skip || out.Error != nil {
 			skipped = true
@@ -97,9 +113,9 @@ func getProcessResult[V any](val V, transformator *transformator) (StepOutput, b
 		}
 	}
 
-	if !skipped && transformator.Aggregator != nil {
-		out = transformator.Aggregator(in)
-		transformator.LastAggregatedValue = &out
+	if !skipped && transformator.aggregator != nil {
+		out = transformator.aggregator(in)
+		transformator.lastAggregatedValue = &out
 		skipped = true
 	}
 
