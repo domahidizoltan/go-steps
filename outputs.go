@@ -3,23 +3,24 @@ package steps
 import (
 	"iter"
 	"reflect"
-
-	is "github.com/domahidizoltan/go-steps/internal/pkg/step"
 )
 
-func (t transformator[T, I]) AsRange() (iter.Seq[any], error) {
+func (t stepsTransformator[T, I]) AsRange() (iter.Seq[any], error) {
 	if t.Error != nil {
 		return nil, t.Error
 	}
 
 	var err error
 	yieldFn := func(yield func(any) bool) {
-		var terminated bool
+		var skipped, terminated bool
 		switch in := any(t.in).(type) {
 		case chan T:
 			// TODO check if closed for lastItem
 			for v := range in {
-				terminated, err = is.Process(v, yield, &t.Transformator, false)
+				skipped, terminated, err = process(v, yield, &t.transformator, false)
+				if skipped {
+					continue
+				}
 				if terminated || err != nil {
 					break
 				}
@@ -27,7 +28,10 @@ func (t transformator[T, I]) AsRange() (iter.Seq[any], error) {
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				terminated, err = is.Process(v, yield, &t.Transformator, idx == lastIdx)
+				skipped, terminated, err = process(v, yield, &t.transformator, idx == lastIdx)
+				if skipped {
+					continue
+				}
 				if terminated || err != nil {
 					break
 				}
@@ -40,19 +44,22 @@ func (t transformator[T, I]) AsRange() (iter.Seq[any], error) {
 }
 
 // TODO alias for AsKeyValueRange()
-func (t transformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) {
+func (t stepsTransformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) {
 	if t.Error != nil {
 		return nil, t.Error
 	}
 
 	var err error
 	yieldFn := func(yield func(any, any) bool) {
-		var terminated bool
+		var skipped, terminated bool
 		switch in := any(t.in).(type) {
 		case chan T:
 			idx := 0
 			for v := range in {
-				terminated, err = is.ProcessIndexed(idx, v, yield, &t.Transformator, false)
+				skipped, terminated, err = processIndexed(idx, v, yield, &t.transformator, false)
+				if skipped {
+					continue
+				}
 				if terminated || err != nil {
 					break
 				}
@@ -60,7 +67,10 @@ func (t transformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) {
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				terminated, err = is.ProcessIndexed(idx, v, yield, &t.Transformator, idx == lastIdx)
+				skipped, terminated, err = processIndexed(idx, v, yield, &t.transformator, idx == lastIdx)
+				if skipped {
+					continue
+				}
 				if terminated || err != nil {
 					break
 				}
@@ -72,7 +82,7 @@ func (t transformator[T, I]) AsIndexedRange() (iter.Seq2[any, any], error) {
 	return yieldFn, nil
 }
 
-func (t transformator[T, I]) AsMap() (map[any][]any, error) {
+func (t stepsTransformator[T, I]) AsMap() (map[any][]any, error) {
 	r, err := t.AsIndexedRange()
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package step
+package steps
 
 import (
 	"errors"
@@ -7,17 +7,20 @@ import (
 
 const maxArgs = 4
 
-type ArgTypes [maxArgs]reflect.Type
-
 type (
+	StepFn    func(StepInput) StepOutput
+	ReducerFn StepFn
+	Args      [maxArgs]any
+	ArgTypes  [maxArgs]reflect.Type
+
 	StepInput struct {
-		Args    [maxArgs]any
+		Args    Args
 		ArgsLen uint8
 	}
 
 	StepOutput struct {
 		Error   error
-		Args    [maxArgs]any
+		Args    Args
 		ArgsLen uint8
 		Skip    bool
 	}
@@ -28,14 +31,11 @@ type (
 		Validate func(prevStepArgTypes ArgTypes) (ArgTypes, error)
 	}
 
-	StepFn func(StepInput) StepOutput
-
 	ReducerWrapper struct {
 		Name      string
 		ReducerFn ReducerFn
 		Validate  func(prevStepArgTypes ArgTypes) (ArgTypes, error)
 	}
-	ReducerFn func(StepInput) StepOutput
 
 	StepsBranch struct {
 		Error             error
@@ -43,13 +43,6 @@ type (
 		AggregatorWrapper *ReducerWrapper
 		Aggregator        ReducerFn
 		Steps             []StepFn
-	}
-
-	Transformator struct {
-		Error               error
-		Aggregator          ReducerFn
-		LastAggregatedValue *StepOutput
-		Steps               []StepFn
 	}
 
 	SkipFirstArgValidation struct{}
@@ -60,9 +53,3 @@ var (
 	ErrStepValidationFailed    = errors.New("step validation failed")
 	ErrIncompatibleInArgType   = errors.New("incompatible input argument type")
 )
-
-func Steps(s ...StepWrapper) StepsBranch {
-	return StepsBranch{
-		StepWrappers: s,
-	}
-}

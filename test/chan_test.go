@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	s "github.com/domahidizoltan/go-steps"
+	"github.com/domahidizoltan/go-steps/test/customwrapper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func TestTransformChanAsRange(t *testing.T) {
 			s.Filter(func(i int) (bool, error) {
 				return i%2 == 0, nil
 			}),
-			s.MultiplyBy(3),
+			customwrapper.MultiplyBy(3),
 			s.Map(func(i int) (string, error) {
 				return "_" + strconv.Itoa(i*2), nil
 			}),

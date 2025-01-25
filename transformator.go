@@ -2,8 +2,6 @@ package steps
 
 import (
 	"reflect"
-
-	"github.com/domahidizoltan/go-steps/internal/pkg/step"
 )
 
 type (
@@ -15,11 +13,16 @@ type (
 		data I
 	}
 
-	stepsBranch step.StepsBranch
+	transformator struct {
+		Error               error
+		Aggregator          ReducerFn
+		LastAggregatedValue *StepOutput
+		Steps               []StepFn
+	}
 
-	transformator[T any, I inputType[T]] struct {
+	stepsTransformator[T any, I inputType[T]] struct {
 		in I
-		step.Transformator
+		transformator
 	}
 )
 
@@ -28,17 +31,19 @@ func Transform[T any, I inputType[T]](in I) input[T, I] {
 }
 
 // TODO .WithOptions to add debug options, transformator name, etc
-func Steps(s ...step.StepWrapper) stepsBranch {
-	return stepsBranch(step.Steps(s...))
+func Steps(s ...StepWrapper) StepsBranch {
+	return StepsBranch{
+		StepWrappers: s,
+	}
 }
 
-func (i input[T, I]) WithSteps(steps ...step.StepWrapper) transformator[T, I] {
+func (i input[T, I]) WithSteps(steps ...StepWrapper) stepsTransformator[T, I] {
 	return i.With(Steps(steps...))
 }
 
-func (i input[T, I]) With(steps stepsBranch) transformator[T, I] {
-	t := transformator[T, I]{
-		Transformator: step.Transformator{
+func (i input[T, I]) With(steps StepsBranch) stepsTransformator[T, I] {
+	t := stepsTransformator[T, I]{
+		transformator: transformator{
 			Error: steps.Validate(),
 		},
 	}
@@ -54,20 +59,20 @@ func (i input[T, I]) With(steps stepsBranch) transformator[T, I] {
 	return t
 }
 
-func (s stepsBranch) Aggregate(fn step.ReducerWrapper) stepsBranch {
-	return stepsBranch{
+func (s StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch {
+	return StepsBranch{
 		StepWrappers:      s.StepWrappers,
 		AggregatorWrapper: &fn,
 	}
 }
 
-func (s *stepsBranch) Validate() error {
+func (s *StepsBranch) Validate() error {
 	if s.Error != nil {
 		return s.Error
 	}
 
-	var lastOutTypes step.ArgTypes
-	s.Steps, lastOutTypes, s.Error = step.GetValidatedSteps[step.SkipFirstArgValidation](s.StepWrappers)
+	var lastOutTypes ArgTypes
+	s.Steps, lastOutTypes, s.Error = getValidatedSteps[SkipFirstArgValidation](s.StepWrappers)
 
 	if s.AggregatorWrapper != nil {
 		if s.Error != nil {
@@ -75,7 +80,7 @@ func (s *stepsBranch) Validate() error {
 		}
 
 		if s.Steps == nil {
-			lastOutTypes = step.ArgTypes{reflect.TypeOf(step.SkipFirstArgValidation{})}
+			lastOutTypes = ArgTypes{reflect.TypeOf(SkipFirstArgValidation{})}
 		}
 		_, s.Error = s.AggregatorWrapper.Validate(lastOutTypes)
 	}

@@ -1,4 +1,4 @@
-package step
+package steps
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, er
 			groupKey, value, err := fn(in.Args[0].(IN0))
 			acc[groupKey] = append(acc[groupKey], value)
 			return StepOutput{
-				Args:    [maxArgs]any{acc},
+				Args:    Args{acc},
 				ArgsLen: 1,
 				Error:   err,
 				Skip:    true,

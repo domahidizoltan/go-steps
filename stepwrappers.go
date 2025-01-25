@@ -1,4 +1,4 @@
-package step
+package steps
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 		StepFn: func(in StepInput) StepOutput {
 			out, err := fn(in.Args[0].(IN0))
 			return StepOutput{
-				Args:    [maxArgs]any{out},
+				Args:    Args{out},
 				ArgsLen: 1,
 				Error:   err,
 				Skip:    err != nil,
@@ -38,7 +38,7 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 		StepFn: func(in StepInput) StepOutput {
 			ok, err := fn(in.Args[0].(IN0))
 			return StepOutput{
-				Args:    [maxArgs]any{in.Args[0].(IN0)},
+				Args:    Args{in.Args[0].(IN0)},
 				ArgsLen: 1,
 				Error:   err,
 				Skip:    !ok,
@@ -74,7 +74,7 @@ func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) StepWrapper {
 			idx, err := fn(in.Args[0].(IN0))
 			out := branch{key: uint8(idx), value: in.Args[0].(IN0), T: reflect.ValueOf(in.Args[0])}
 			return StepOutput{
-				Args:    [maxArgs]any{out},
+				Args:    Args{out},
 				ArgsLen: 1,
 				Error:   err,
 			}
@@ -101,7 +101,7 @@ func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 		StepFn: func(in StepInput) StepOutput {
 			keyVal := in.Args[0].(branch)
 			val := StepInput{
-				Args:    [maxArgs]any{keyVal.value},
+				Args:    Args{keyVal.value},
 				ArgsLen: 1,
 			}
 			var out StepOutput
@@ -116,7 +116,7 @@ func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 				}
 			}
 			return StepOutput{
-				Args:    [maxArgs]any{branch{key: keyVal.key, value: out.Args[0], T: reflect.ValueOf(out.Args[0])}},
+				Args:    Args{branch{key: keyVal.key, value: out.Args[0], T: reflect.ValueOf(out.Args[0])}},
 				ArgsLen: 1,
 				Error:   out.Error,
 				Skip:    out.Skip,
@@ -133,7 +133,7 @@ func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 				}
 			}
 			for _, container := range stepsBranches {
-				if _, _, err := GetValidatedSteps[IN0](container.StepWrappers); err != nil {
+				if _, _, err := getValidatedSteps[IN0](container.StepWrappers); err != nil {
 					return ArgTypes{}, err
 				}
 			}
@@ -147,7 +147,7 @@ func Merge() StepWrapper {
 		Name: "Merge",
 		StepFn: func(in StepInput) StepOutput {
 			return StepOutput{
-				Args:    [maxArgs]any{in.Args[0].(branch).value},
+				Args:    Args{in.Args[0].(branch).value},
 				ArgsLen: 1,
 				Error:   nil,
 				Skip:    false,
@@ -164,25 +164,6 @@ func Merge() StepWrapper {
 				}
 			}
 			return ArgTypes{reflect.TypeFor[any]()}, nil
-		},
-	}
-}
-
-// TODO Added only for testing purposes
-
-func MultiplyBy[IN0 ~int](multiplier IN0) StepWrapper {
-	return StepWrapper{
-		Name: "MultiplyBy",
-		StepFn: func(in StepInput) StepOutput {
-			return StepOutput{
-				Args:    [maxArgs]any{in.Args[0].(IN0) * multiplier},
-				ArgsLen: 1,
-				Error:   nil,
-				Skip:    false,
-			}
-		},
-		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
-			return ArgTypes{reflect.TypeFor[IN0]()}, nil
 		},
 	}
 }

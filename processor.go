@@ -1,11 +1,11 @@
-package step
+package steps
 
 import (
 	"fmt"
 	"reflect"
 )
 
-func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, error) {
+func getValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, error) {
 	if len(stepWrappers) == 0 {
 		return nil, ArgTypes{}, nil
 	}
@@ -27,30 +27,31 @@ func GetValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, e
 	return validSteps, outTypes, nil
 }
 
-func Process[V any](val V, yield func(any) bool, transformator *Transformator, isLastItem bool) (bool, error) {
+func process[V any](val V, yield func(any) bool, transformator *transformator, isLastItem bool) (bool, bool, error) {
 	out, skipped := getProcessResult(val, transformator)
 	if out.Error != nil {
-		return false, out.Error
+		return false, false, out.Error
 	}
-
 	aggOut := transformator.LastAggregatedValue
 	if aggOut != nil {
 		if aggOut.Error != nil {
-			return false, aggOut.Error
+			return false, false, aggOut.Error
 		}
 		if isLastItem {
-			return yield(aggOut.Args[0]), nil
+			return false, yield(aggOut.Args[0]), nil
 		}
 	}
 
-	terminated := skipped || !yield(out.Args[0])
-	return terminated, nil
+	if skipped {
+		return true, false, nil
+	}
+	return false, !yield(out.Args[0]), nil
 }
 
-func ProcessIndexed[V any](key any, val V, yield func(any, any) bool, transformator *Transformator, isLastItem bool) (bool, error) {
+func processIndexed[V any](key any, val V, yield func(any, any) bool, transformator *transformator, isLastItem bool) (bool, bool, error) {
 	out, skipped := getProcessResult(val, transformator)
 	if out.Error != nil {
-		return false, out.Error
+		return false, false, out.Error
 	}
 
 	idx := key
@@ -63,18 +64,20 @@ func ProcessIndexed[V any](key any, val V, yield func(any, any) bool, transforma
 	aggOut := transformator.LastAggregatedValue
 	if aggOut != nil {
 		if aggOut.Error != nil {
-			return false, aggOut.Error
+			return false, false, aggOut.Error
 		}
 		if isLastItem {
-			return yield(idx, aggOut.Args[0]), nil
+			return false, yield(idx, aggOut.Args[0]), nil
 		}
 	}
 
-	terminated := skipped || !yield(idx, v)
-	return terminated, nil
+	if skipped {
+		return true, false, nil
+	}
+	return false, !yield(idx, v), nil
 }
 
-func getProcessResult[V any](val V, transformator *Transformator) (StepOutput, bool) {
+func getProcessResult[V any](val V, transformator *transformator) (StepOutput, bool) {
 	in := StepInput{
 		Args:    [4]any{val},
 		ArgsLen: 1,

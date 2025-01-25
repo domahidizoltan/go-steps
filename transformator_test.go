@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/domahidizoltan/go-steps/internal/pkg/step"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,9 +26,9 @@ var (
 func TestStepsCreation(t *testing.T) {
 	type scenario struct {
 		name                      string
-		steps                     stepsBranch
-		expectedStepWrappers      []step.StepWrapper
-		expectedAggregatorWrapper *step.ReducerWrapper
+		steps                     StepsBranch
+		expectedStepWrappers      []StepWrapper
+		expectedAggregatorWrapper *ReducerWrapper
 	}
 
 	for _, sc := range []scenario{
@@ -39,7 +38,7 @@ func TestStepsCreation(t *testing.T) {
 		}, {
 			name:                 "steps_added",
 			steps:                Steps(mapStringToInt, filterEven),
-			expectedStepWrappers: []step.StepWrapper{mapStringToInt, filterEven},
+			expectedStepWrappers: []StepWrapper{mapStringToInt, filterEven},
 		}, {
 			name:                      "aggregator_added_without_steps",
 			steps:                     Steps().Aggregate(groupBy),
@@ -47,7 +46,7 @@ func TestStepsCreation(t *testing.T) {
 		}, {
 			name:                      "steps_and_aggregator_added",
 			steps:                     Steps(mapStringToInt, filterEven).Aggregate(groupBy),
-			expectedStepWrappers:      []step.StepWrapper{mapStringToInt, filterEven},
+			expectedStepWrappers:      []StepWrapper{mapStringToInt, filterEven},
 			expectedAggregatorWrapper: &groupBy,
 		},
 	} {
@@ -63,10 +62,10 @@ func TestStepsCreation(t *testing.T) {
 func TestStepsValidationAndCreation(t *testing.T) {
 	type scenario struct {
 		name                      string
-		steps                     stepsBranch
-		expectedSteps             []step.StepFn
-		expectedStepWrappers      []step.StepWrapper
-		expectedAggregatorWrapper *step.ReducerWrapper
+		steps                     StepsBranch
+		expectedSteps             []StepFn
+		expectedStepWrappers      []StepWrapper
+		expectedAggregatorWrapper *ReducerWrapper
 		hasError                  bool
 	}
 
@@ -76,12 +75,12 @@ func TestStepsValidationAndCreation(t *testing.T) {
 		}, {
 			name:                 "steps_validated_without_error",
 			steps:                Steps(mapStringToInt, filterEven),
-			expectedSteps:        []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
-			expectedStepWrappers: []step.StepWrapper{mapStringToInt, filterEven},
+			expectedSteps:        []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedStepWrappers: []StepWrapper{mapStringToInt, filterEven},
 		}, {
 			name:                 "steps_validated_with_error",
 			steps:                Steps(filterEven, mapStringToInt),
-			expectedStepWrappers: []step.StepWrapper{filterEven, mapStringToInt},
+			expectedStepWrappers: []StepWrapper{filterEven, mapStringToInt},
 			hasError:             true,
 		}, {
 			name:                      "aggregator_added_without_steps",
@@ -90,14 +89,14 @@ func TestStepsValidationAndCreation(t *testing.T) {
 		}, {
 			name:                      "steps_and_aggregator_validated_without_error",
 			steps:                     Steps(mapStringToInt, filterEven).Aggregate(groupBy),
-			expectedSteps:             []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
-			expectedStepWrappers:      []step.StepWrapper{mapStringToInt, filterEven},
+			expectedSteps:             []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedStepWrappers:      []StepWrapper{mapStringToInt, filterEven},
 			expectedAggregatorWrapper: &groupBy,
 		}, {
 			name:                      "steps_and_aggregator_validated_with_error",
 			steps:                     Steps(filterStr).Aggregate(groupBy),
-			expectedSteps:             []step.StepFn{filterStr.StepFn},
-			expectedStepWrappers:      []step.StepWrapper{filterStr},
+			expectedSteps:             []StepFn{filterStr.StepFn},
+			expectedStepWrappers:      []StepWrapper{filterStr},
 			expectedAggregatorWrapper: &groupBy,
 			hasError:                  true,
 		},
@@ -123,10 +122,10 @@ func TestSliceTransformator(t *testing.T) {
 	input := []string{"1", "2", "3", "4", "5"}
 	type scenario struct {
 		name               string
-		transformator      transformator[string, []string]
+		transformator      stepsTransformator[string, []string]
 		expectedData       []string
-		expectedSteps      []step.StepFn
-		expectedAggregator step.ReducerFn
+		expectedSteps      []StepFn
+		expectedAggregator ReducerFn
 		hasError           bool
 	}
 
@@ -136,20 +135,20 @@ func TestSliceTransformator(t *testing.T) {
 			transformator: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven)),
 			expectedData:  input,
-			expectedSteps: []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_withsteps",
 			transformator: Transform[string](input).
 				WithSteps(mapStringToInt, filterEven),
 			expectedData:  input,
-			expectedSteps: []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_steps_and_aggregate",
 			transformator: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven).
 					Aggregate(groupBy)),
 			expectedData:       input,
-			expectedSteps:      []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedSteps:      []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 			expectedAggregator: groupBy.ReducerFn,
 		}, {
 			name: "transform_with_error",
@@ -176,10 +175,10 @@ func TestChanTransformator(t *testing.T) {
 	input := make(chan string, 5)
 	type scenario struct {
 		name               string
-		transformator      transformator[string, chan string]
+		transformator      stepsTransformator[string, chan string]
 		expectedData       chan string
-		expectedSteps      []step.StepFn
-		expectedAggregator step.ReducerFn
+		expectedSteps      []StepFn
+		expectedAggregator ReducerFn
 		hasError           bool
 	}
 
@@ -189,20 +188,20 @@ func TestChanTransformator(t *testing.T) {
 			transformator: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven)),
 			expectedData:  input,
-			expectedSteps: []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_withsteps",
 			transformator: Transform[string](input).
 				WithSteps(mapStringToInt, filterEven),
 			expectedData:  input,
-			expectedSteps: []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_steps_and_aggregate",
 			transformator: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven).
 					Aggregate(groupBy)),
 			expectedData:       input,
-			expectedSteps:      []step.StepFn{mapStringToInt.StepFn, filterEven.StepFn},
+			expectedSteps:      []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 			expectedAggregator: groupBy.ReducerFn,
 		}, {
 			name: "transform_with_error",
@@ -225,7 +224,7 @@ func TestChanTransformator(t *testing.T) {
 	}
 }
 
-func matchSteps(t *testing.T, expected, actual []step.StepFn) {
+func matchSteps(t *testing.T, expected, actual []StepFn) {
 	t.Helper()
 	if len(expected) != len(actual) {
 		t.Errorf("steps length are different: %d != %d", len(expected), len(actual))
@@ -238,7 +237,7 @@ func matchSteps(t *testing.T, expected, actual []step.StepFn) {
 	}
 }
 
-func matchStepWrappers(t *testing.T, expected, actual []step.StepWrapper) {
+func matchStepWrappers(t *testing.T, expected, actual []StepWrapper) {
 	t.Helper()
 	for i, exp := range expected {
 		if !funcPtrAreEqual(actual[i].StepFn, exp.StepFn) {
@@ -247,14 +246,14 @@ func matchStepWrappers(t *testing.T, expected, actual []step.StepWrapper) {
 	}
 }
 
-func matchAggregator(t *testing.T, expected, actual step.ReducerFn) {
+func matchAggregator(t *testing.T, expected, actual ReducerFn) {
 	t.Helper()
 	if !funcPtrAreEqual(expected, actual) {
 		t.Errorf("aggregator is different: %v != %v", actual, expected)
 	}
 }
 
-func matchAggregatorWrapper(t *testing.T, expected, actual *step.ReducerWrapper) {
+func matchAggregatorWrapper(t *testing.T, expected, actual *ReducerWrapper) {
 	t.Helper()
 	if expected == nil {
 		if actual != nil {

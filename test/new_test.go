@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	s "github.com/domahidizoltan/go-steps"
+	"github.com/domahidizoltan/go-steps/test/customwrapper"
 )
 
 // op: 0.7ns 0B 0 alloc
@@ -136,7 +137,7 @@ func BenchmarkSlice(b *testing.B) {
 		s.Filter(func(i int) (bool, error) {
 			return i%2 == 0, nil
 		}),
-		s.MultiplyBy(3),
+		customwrapper.MultiplyBy(3),
 		s.Map(func(i int) (string, error) {
 			return "_" + strconv.Itoa(i*2), nil
 		}),

@@ -1,4 +1,4 @@
-package step
+package steps
 
 import (
 	"errors"
@@ -39,7 +39,7 @@ var (
 )
 
 func TestGetValidatedSteps_HasNoError_WhenNoStepWrappersAreGiven(t *testing.T) {
-	actual, _, err := GetValidatedSteps[any](nil)
+	actual, _, err := getValidatedSteps[any](nil)
 	require.NoError(t, err)
 	assert.Nil(t, actual)
 }
@@ -71,7 +71,7 @@ func TestGetValidatedSteps_HasNoError(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			actual, _, err := GetValidatedSteps[int](sc.wrappers)
+			actual, _, err := getValidatedSteps[int](sc.wrappers)
 			require.NoError(t, err)
 			assert.Len(t, sc.expected, len(actual))
 			for i, act := range actual {
@@ -116,7 +116,7 @@ func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			actual, _, err := GetValidatedSteps[int](sc.wrappers)
+			actual, _, err := getValidatedSteps[int](sc.wrappers)
 			require.Empty(t, actual)
 			assert.ErrorIsf(t, err, sc.error, "unexpected error: %s", err.Error())
 			assert.Containsf(t, err.Error(), sc.errorDetail, "unexpected error detail: %s", err.Error())
@@ -130,11 +130,11 @@ func ptr[T any](v T) *T {
 
 func TestProcess(t *testing.T) {
 	type scenario[T any] struct {
-		name       string
-		input      int
-		output     T
-		terminated bool
-		err        error
+		name    string
+		input   int
+		output  T
+		skipped bool
+		err     error
 	}
 
 	for _, sc := range []scenario[*int]{
@@ -143,9 +143,9 @@ func TestProcess(t *testing.T) {
 			input:  2,
 			output: ptr(3),
 		}, {
-			name:       "value_skipped",
-			input:      1,
-			terminated: true,
+			name:    "value_skipped",
+			input:   1,
+			skipped: true,
 		}, {
 			name:  "step_returns_error",
 			input: 2,
@@ -161,13 +161,13 @@ func TestProcess(t *testing.T) {
 			mapFn := Map(func(in int) (int, error) {
 				return in + 1, sc.err
 			})
-			trn := &Transformator{
+			trn := &transformator{
 				Steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 			}
 
-			terminated, err := Process(sc.input, yield, trn, false)
+			skipped, _, err := process(sc.input, yield, trn, false)
 
-			assert.Equal(t, sc.terminated, terminated)
+			assert.Equal(t, sc.skipped, skipped)
 			assert.Equal(t, sc.err, err)
 			assert.Equal(t, sc.output, processedValue)
 		})
@@ -205,12 +205,12 @@ func TestProcessAndAggregate(t *testing.T) {
 				return true, 2, sc.err
 			})
 
-			trn := &Transformator{
+			trn := &transformator{
 				Steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
 				Aggregator: groupEven.ReducerFn,
 			}
 
-			terminated, err := Process(sc.input, yield, trn, true)
+			_, terminated, err := process(sc.input, yield, trn, true)
 
 			assert.Equal(t, sc.terminated, terminated)
 			assert.Equal(t, sc.err, err)
@@ -221,12 +221,12 @@ func TestProcessAndAggregate(t *testing.T) {
 
 func TestProcessIndexed(t *testing.T) {
 	type scenario[T any] struct {
-		name       string
-		input      int
-		output     T
-		outputKey  *string
-		terminated bool
-		err        error
+		name      string
+		input     int
+		output    T
+		outputKey *string
+		skipped   bool
+		err       error
 	}
 
 	for _, sc := range []scenario[*int]{
@@ -236,9 +236,9 @@ func TestProcessIndexed(t *testing.T) {
 			outputKey: ptr("value_processed"),
 			output:    ptr(3),
 		}, {
-			name:       "value_skipped",
-			input:      1,
-			terminated: true,
+			name:    "value_skipped",
+			input:   1,
+			skipped: true,
 		}, {
 			name:  "step_returns_error",
 			input: 2,
@@ -256,13 +256,13 @@ func TestProcessIndexed(t *testing.T) {
 			mapFn := Map(func(in int) (int, error) {
 				return in + 1, sc.err
 			})
-			trn := &Transformator{
+			trn := &transformator{
 				Steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 			}
 
-			terminated, err := ProcessIndexed(sc.name, sc.input, yield, trn, false)
+			skipped, _, err := processIndexed(sc.name, sc.input, yield, trn, false)
 
-			assert.Equal(t, sc.terminated, terminated)
+			assert.Equal(t, sc.skipped, skipped)
 			assert.Equal(t, sc.err, err)
 			assert.Equal(t, sc.output, processedValue)
 			assert.Equal(t, sc.outputKey, processedKey)
@@ -305,12 +305,12 @@ func TestProcessIndexedAndAggregate(t *testing.T) {
 				return true, 2, sc.err
 			})
 
-			trn := &Transformator{
+			trn := &transformator{
 				Steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
 				Aggregator: groupEven.ReducerFn,
 			}
 
-			terminated, err := ProcessIndexed(sc.name, sc.input, yield, trn, true)
+			_, terminated, err := processIndexed(sc.name, sc.input, yield, trn, true)
 
 			assert.Equal(t, sc.terminated, terminated)
 			assert.Equal(t, sc.err, err)
