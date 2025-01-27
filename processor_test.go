@@ -165,7 +165,7 @@ func TestProcess(t *testing.T) {
 			mapFn := Map(func(in int) (int, error) {
 				return in + 1, sc.err
 			})
-			trn := &transformator{
+			trn := &transformer{
 				steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 			}
 
@@ -209,7 +209,7 @@ func TestProcessAndAggregate(t *testing.T) {
 				return true, 2, sc.err
 			})
 
-			trn := &transformator{
+			trn := &transformer{
 				steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
 				aggregator: groupEven.ReducerFn,
 			}
@@ -260,7 +260,7 @@ func TestProcessIndexed(t *testing.T) {
 			mapFn := Map(func(in int) (int, error) {
 				return in + 1, sc.err
 			})
-			trn := &transformator{
+			trn := &transformer{
 				steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 			}
 
@@ -309,7 +309,7 @@ func TestProcessIndexedAndAggregate(t *testing.T) {
 				return true, 2, sc.err
 			})
 
-			trn := &transformator{
+			trn := &transformer{
 				steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
 				aggregator: groupEven.ReducerFn,
 			}

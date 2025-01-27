@@ -13,16 +13,16 @@ type (
 		data IT
 	}
 
-	transformator struct {
+	transformer struct {
 		error               error
 		aggregator          ReducerFn
 		lastAggregatedValue *StepOutput
 		steps               []StepFn
 	}
 
-	stepsTransformator[T any, IT inputType[T]] struct {
+	stepsTransformer[T any, IT inputType[T]] struct {
 		input IT
-		transformator
+		transformer
 	}
 )
 
@@ -30,20 +30,20 @@ func Transform[T any, IT inputType[T]](in IT) input[T, IT] {
 	return input[T, IT]{in}
 }
 
-// TODO .WithOptions to add debug options, transformator name, etc
+// TODO .WithOptions to add debug options, transformer name, etc
 func Steps(s ...StepWrapper) StepsBranch {
 	return StepsBranch{
 		StepWrappers: s,
 	}
 }
 
-func (i input[T, IT]) WithSteps(steps ...StepWrapper) stepsTransformator[T, IT] {
+func (i input[T, IT]) WithSteps(steps ...StepWrapper) stepsTransformer[T, IT] {
 	return i.With(Steps(steps...))
 }
 
-func (i input[T, IT]) With(steps StepsBranch) stepsTransformator[T, IT] {
-	t := stepsTransformator[T, IT]{
-		transformator: transformator{
+func (i input[T, IT]) With(steps StepsBranch) stepsTransformer[T, IT] {
+	t := stepsTransformer[T, IT]{
+		transformer: transformer{
 			error: steps.Validate(),
 		},
 	}

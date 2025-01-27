@@ -6,14 +6,14 @@ import (
 	"reflect"
 )
 
-func emptyErrorHandler[T any, IT inputType[T]](t stepsTransformator[T, IT]) func(error) {
+func emptyErrorHandler[T any, IT inputType[T]](t stepsTransformer[T, IT]) func(error) {
 	return func(err error) {
 		_ = t
 		fmt.Println("error occured:", err)
 	}
 }
 
-func (t stepsTransformator[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any] {
+func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any] {
 	if errorHandler == nil {
 		errorHandler = emptyErrorHandler(t)
 	}
@@ -30,7 +30,7 @@ func (t stepsTransformator[T, IT]) AsRange(errorHandler func(error)) iter.Seq[an
 		case chan T:
 			// TODO check if closed for lastItem
 			for v := range in {
-				_, terminated, err = process(v, yield, &t.transformator, false)
+				_, terminated, err = process(v, yield, &t.transformer, false)
 				if terminated || err != nil {
 					if err != nil {
 						errorHandler(err)
@@ -41,7 +41,7 @@ func (t stepsTransformator[T, IT]) AsRange(errorHandler func(error)) iter.Seq[an
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				_, terminated, err = process(v, yield, &t.transformator, idx == lastIdx)
+				_, terminated, err = process(v, yield, &t.transformer, idx == lastIdx)
 				if terminated || err != nil {
 					if err != nil {
 						errorHandler(err)
@@ -55,11 +55,11 @@ func (t stepsTransformator[T, IT]) AsRange(errorHandler func(error)) iter.Seq[an
 	}
 }
 
-func (t stepsTransformator[T, IT]) AsKeyValueRange(errorHandler func(error)) iter.Seq2[any, any] {
+func (t stepsTransformer[T, IT]) AsKeyValueRange(errorHandler func(error)) iter.Seq2[any, any] {
 	return t.AsIndexedRange(errorHandler)
 }
 
-func (t stepsTransformator[T, IT]) AsIndexedRange(errorHandler func(error)) iter.Seq2[any, any] {
+func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.Seq2[any, any] {
 	if errorHandler == nil {
 		errorHandler = emptyErrorHandler(t)
 	}
@@ -76,7 +76,7 @@ func (t stepsTransformator[T, IT]) AsIndexedRange(errorHandler func(error)) iter
 		case chan T:
 			idx := 0
 			for v := range in {
-				_, terminated, err = processIndexed(idx, v, yield, &t.transformator, false)
+				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, false)
 				if terminated || err != nil {
 					if err != nil {
 						errorHandler(err)
@@ -88,7 +88,7 @@ func (t stepsTransformator[T, IT]) AsIndexedRange(errorHandler func(error)) iter
 		case []T:
 			lastIdx := len(in) - 1
 			for idx, v := range in {
-				_, terminated, err = processIndexed(idx, v, yield, &t.transformator, idx == lastIdx)
+				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, idx == lastIdx)
 				if terminated || err != nil {
 					if err != nil {
 						errorHandler(err)
@@ -102,7 +102,7 @@ func (t stepsTransformator[T, IT]) AsIndexedRange(errorHandler func(error)) iter
 	}
 }
 
-func (t stepsTransformator[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]any {
+func (t stepsTransformer[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]any {
 	var acc any
 	for _, v := range t.AsIndexedRange(errorHandler) {
 		fmt.Printf("__ %+v\n", reflect.ValueOf(v))
@@ -123,7 +123,7 @@ func (t stepsTransformator[T, IT]) AsMultiMap(errorHandler func(error)) map[any]
 	return res
 }
 
-func (t stepsTransformator[T, IT]) AsMap(errorHandler func(error)) map[any]any {
+func (t stepsTransformer[T, IT]) AsMap(errorHandler func(error)) map[any]any {
 	res := map[any]any{}
 	for k, v := range t.AsIndexedRange(errorHandler) {
 		res[k] = v
@@ -131,7 +131,7 @@ func (t stepsTransformator[T, IT]) AsMap(errorHandler func(error)) map[any]any {
 	return res
 }
 
-func (t stepsTransformator[T, IT]) AsSlice(errorHandler func(error)) []any {
+func (t stepsTransformer[T, IT]) AsSlice(errorHandler func(error)) []any {
 	var res []any
 	for v := range t.AsRange(errorHandler) {
 		res = append(res, v)

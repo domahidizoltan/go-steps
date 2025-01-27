@@ -118,11 +118,11 @@ func TestStepsValidationAndCreation(t *testing.T) {
 	}
 }
 
-func TestSliceTransformator(t *testing.T) {
+func TestSliceTransformer(t *testing.T) {
 	input := []string{"1", "2", "3", "4", "5"}
 	type scenario struct {
 		name               string
-		transformator      stepsTransformator[string, []string]
+		Transformer        stepsTransformer[string, []string]
 		expectedData       []string
 		expectedSteps      []StepFn
 		expectedAggregator ReducerFn
@@ -132,19 +132,19 @@ func TestSliceTransformator(t *testing.T) {
 	for _, sc := range []scenario{
 		{
 			name: "transform_using_steps",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven)),
 			expectedData:  input,
 			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_withsteps",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				WithSteps(mapStringToInt, filterEven),
 			expectedData:  input,
 			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_steps_and_aggregate",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven).
 					Aggregate(groupBy)),
 			expectedData:       input,
@@ -152,30 +152,30 @@ func TestSliceTransformator(t *testing.T) {
 			expectedAggregator: groupBy.ReducerFn,
 		}, {
 			name: "transform_with_error",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				With(Steps(filterStr).Aggregate(groupBy)),
 			hasError: true,
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			assert.Equal(t, sc.expectedData, sc.transformator.input)
-			matchSteps(t, sc.expectedSteps, sc.transformator.steps)
-			matchAggregator(t, sc.expectedAggregator, sc.transformator.aggregator)
+			assert.Equal(t, sc.expectedData, sc.Transformer.input)
+			matchSteps(t, sc.expectedSteps, sc.Transformer.steps)
+			matchAggregator(t, sc.expectedAggregator, sc.Transformer.aggregator)
 
 			if sc.hasError {
-				assert.Error(t, sc.transformator.error)
+				assert.Error(t, sc.Transformer.error)
 			} else {
-				assert.NoError(t, sc.transformator.error)
+				assert.NoError(t, sc.Transformer.error)
 			}
 		})
 	}
 }
 
-func TestChanTransformator(t *testing.T) {
+func TestChanTransformer(t *testing.T) {
 	input := make(chan string, 5)
 	type scenario struct {
 		name               string
-		transformator      stepsTransformator[string, chan string]
+		Transformer        stepsTransformer[string, chan string]
 		expectedData       chan string
 		expectedSteps      []StepFn
 		expectedAggregator ReducerFn
@@ -185,19 +185,19 @@ func TestChanTransformator(t *testing.T) {
 	for _, sc := range []scenario{
 		{
 			name: "transform_using_steps",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven)),
 			expectedData:  input,
 			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_withsteps",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				WithSteps(mapStringToInt, filterEven),
 			expectedData:  input,
 			expectedSteps: []StepFn{mapStringToInt.StepFn, filterEven.StepFn},
 		}, {
 			name: "transform_using_steps_and_aggregate",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				With(Steps(mapStringToInt, filterEven).
 					Aggregate(groupBy)),
 			expectedData:       input,
@@ -205,20 +205,20 @@ func TestChanTransformator(t *testing.T) {
 			expectedAggregator: groupBy.ReducerFn,
 		}, {
 			name: "transform_with_error",
-			transformator: Transform[string](input).
+			Transformer: Transform[string](input).
 				With(Steps(filterStr).Aggregate(groupBy)),
 			hasError: true,
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			assert.Equal(t, sc.expectedData, sc.transformator.input)
-			matchSteps(t, sc.expectedSteps, sc.transformator.steps)
-			matchAggregator(t, sc.expectedAggregator, sc.transformator.aggregator)
+			assert.Equal(t, sc.expectedData, sc.Transformer.input)
+			matchSteps(t, sc.expectedSteps, sc.Transformer.steps)
+			matchAggregator(t, sc.expectedAggregator, sc.Transformer.aggregator)
 
 			if sc.hasError {
-				assert.Error(t, sc.transformator.error)
+				assert.Error(t, sc.Transformer.error)
 			} else {
-				assert.NoError(t, sc.transformator.error)
+				assert.NoError(t, sc.Transformer.error)
 			}
 		})
 	}

@@ -18,7 +18,7 @@ func TestTransformSliceAsRange(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	transformator := s.Transform[string]([]string{"1", "2", "3", "4", "5"}).
+	transformer := s.Transform[string]([]string{"1", "2", "3", "4", "5"}).
 		With(s.Steps(
 			s.Map(func(i string) (int, error) {
 				return strconv.Atoi(i)
@@ -34,7 +34,7 @@ func TestTransformSliceAsRange(t *testing.T) {
 
 	expected := []string{"_12", "_24"}
 	actual := []string{}
-	for i := range transformator.AsRange(errorHandler) {
+	for i := range transformer.AsRange(errorHandler) {
 		actual = append(actual, i.(string))
 	}
 	assert.Len(t, actual, 2)
@@ -107,7 +107,7 @@ func TestAggregateCsv(t *testing.T) {
 	errorHandler := func(err error) {
 		require.NoError(t, err)
 	}
-	transformator := s.Transform[employee](employees).
+	transformer := s.Transform[employee](employees).
 		With(s.Steps(
 			s.Filter(func(e employee) (bool, error) {
 				// if e.City == "New York" && e.Department == "Engineering" {
@@ -137,7 +137,7 @@ func TestAggregateCsv(t *testing.T) {
 	}
 
 	actual := [3]float64{}
-	for k, v := range transformator.AsMultiMap(errorHandler) {
+	for k, v := range transformer.AsMultiMap(errorHandler) {
 		switch k.(ageRange) {
 		case young:
 			actual[0] = sum(v)
@@ -169,7 +169,7 @@ func TestSplitAndZip(t *testing.T) {
 	errorHandler := func(err error) {
 		require.NoError(t, err)
 	}
-	transformator := s.Transform[int]([]int{1, 2, 3, 4, 5, 6}).
+	transformer := s.Transform[int]([]int{1, 2, 3, 4, 5, 6}).
 		With(s.Steps(
 			s.Split(func(i int) (fizzBuzz, error) {
 				switch {
@@ -193,7 +193,7 @@ func TestSplitAndZip(t *testing.T) {
 
 	expected := []string{"1", "fz:2", "bz:3", "fz:4", "5", "fzbz:6"}
 	actual := []string{}
-	for i := range transformator.AsRange(errorHandler) {
+	for i := range transformer.AsRange(errorHandler) {
 		actual = append(actual, i.(string))
 	}
 	assert.Equal(t, expected, actual)

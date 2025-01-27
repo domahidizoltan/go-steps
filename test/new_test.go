@@ -146,11 +146,11 @@ func BenchmarkSlice(b *testing.B) {
 	b.ResetTimer()
 	var x string
 	for i := 0; i < b.N; i++ {
-		transformator := s.Transform[string]([]string{"1", "2", "3", "4", "5"}).
+		transformer := s.Transform[string]([]string{"1", "2", "3", "4", "5"}).
 			With(steps).AsRange(func(err error) {
 			panic(err)
 		})
-		for i := range transformator {
+		for i := range transformer {
 			x = i.(string)
 		}
 	}
@@ -202,11 +202,11 @@ func BenchmarkWithBranches(b *testing.B) {
 	b.ResetTimer()
 	var x string
 	for i := 0; i < b.N; i++ {
-		transformator := s.Transform[int]([]int{1, 2, 3, 4, 5, 6}).
+		transformer := s.Transform[int]([]int{1, 2, 3, 4, 5, 6}).
 			With(steps).AsRange(func(err error) {
 			panic(err)
 		})
-		for i := range transformator {
+		for i := range transformer {
 			x = i.(string)
 		}
 	}

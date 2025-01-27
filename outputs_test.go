@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	errTransformator = errors.New("transformator error")
-	errStep          = errors.New("step error")
-	errorFn          = Map(func(in int) (int, error) {
+	errTransformer = errors.New("transformer error")
+	errStep        = errors.New("step error")
+	errorFn        = Map(func(in int) (int, error) {
 		return 0, errStep
 	})
 )
@@ -18,7 +18,7 @@ var (
 func TestAsRange_WithSlice(t *testing.T) {
 	type scenario struct {
 		name           string
-		transformator  stepsTransformator[int, []int]
+		transformer    stepsTransformer[int, []int]
 		expectedOutput []any
 		expectedError  error
 	}
@@ -26,39 +26,39 @@ func TestAsRange_WithSlice(t *testing.T) {
 	for _, sc := range []scenario{
 		{
 			name: "empty_input",
-			transformator: stepsTransformator[int, []int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, []int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
 		}, {
 			name: "empty_steps",
-			transformator: stepsTransformator[int, []int]{
+			transformer: stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
 			},
 			expectedOutput: []any{1, 2, 3, 4, 5},
 		}, {
 			name: "step_error_returned",
-			transformator: stepsTransformator[int, []int]{
+			transformer: stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
-				transformator: transformator{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, errorFn.StepFn},
 				},
 			},
 			expectedError: errStep,
 		}, {
-			name: "transformator_error_returned",
-			transformator: stepsTransformator[int, []int]{
-				transformator: transformator{
-					error: errTransformator,
+			name: "transformer_error_returned",
+			transformer: stepsTransformer[int, []int]{
+				transformer: transformer{
+					error: errTransformer,
 				},
 			},
-			expectedError: errTransformator,
+			expectedError: errTransformer,
 		}, {
 			name: "input_processed",
-			transformator: stepsTransformator[int, []int]{
+			transformer: stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
-				transformator: transformator{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
@@ -66,7 +66,7 @@ func TestAsRange_WithSlice(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			iter := sc.transformator.AsRange(func(err error) {
+			iter := sc.transformer.AsRange(func(err error) {
 				assert.Equal(t, sc.expectedError, err)
 			})
 
@@ -82,7 +82,7 @@ func TestAsRange_WithSlice(t *testing.T) {
 func TestAsIndexedRange_WithSlice(t *testing.T) {
 	type scenario struct {
 		name           string
-		transformator  stepsTransformator[int, []int]
+		transformer    stepsTransformer[int, []int]
 		expectedOutput map[any]any
 		expectedError  error
 	}
@@ -90,39 +90,39 @@ func TestAsIndexedRange_WithSlice(t *testing.T) {
 	for _, sc := range []scenario{
 		{
 			name: "empty_input",
-			transformator: stepsTransformator[int, []int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, []int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
 		}, {
 			name: "empty_steps",
-			transformator: stepsTransformator[int, []int]{
+			transformer: stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
 			},
 			expectedOutput: map[any]any{0: 1, 1: 2, 2: 3, 3: 4, 4: 5},
 		}, {
 			name: "step_error_returned",
-			transformator: stepsTransformator[int, []int]{
+			transformer: stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
-				transformator: transformator{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, errorFn.StepFn},
 				},
 			},
 			expectedError: errStep,
 		}, {
-			name: "transformator_error_returned",
-			transformator: stepsTransformator[int, []int]{
-				transformator: transformator{
-					error: errTransformator,
+			name: "transformer_error_returned",
+			transformer: stepsTransformer[int, []int]{
+				transformer: transformer{
+					error: errTransformer,
 				},
 			},
-			expectedError: errTransformator,
+			expectedError: errTransformer,
 		}, {
 			name: "input_processed",
-			transformator: stepsTransformator[int, []int]{
+			transformer: stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
-				transformator: transformator{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
@@ -130,7 +130,7 @@ func TestAsIndexedRange_WithSlice(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			iter := sc.transformator.AsIndexedRange(func(err error) {
+			iter := sc.transformer.AsIndexedRange(func(err error) {
 				assert.Equal(t, sc.expectedError, err)
 			})
 
@@ -150,7 +150,7 @@ func TestAsIndexedRange_WithSlice(t *testing.T) {
 func TestAsRange_WithChan(t *testing.T) {
 	type scenario struct {
 		name           string
-		transformator  stepsTransformator[int, chan int]
+		transformer    stepsTransformer[int, chan int]
 		inputValues    []int
 		expectedOutput []any
 		expectedError  error
@@ -159,37 +159,37 @@ func TestAsRange_WithChan(t *testing.T) {
 	for _, sc := range []scenario{
 		{
 			name: "empty_input",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
 		}, {
 			name:           "empty_steps",
-			transformator:  stepsTransformator[int, chan int]{},
+			transformer:    stepsTransformer[int, chan int]{},
 			inputValues:    []int{1, 2, 3, 4, 5},
 			expectedOutput: []any{1, 2, 3, 4, 5},
 		}, {
 			name: "step_error_returned",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, errorFn.StepFn},
 				},
 			},
 			inputValues:   []int{1, 2, 3, 4, 5},
 			expectedError: errStep,
 		}, {
-			name: "transformator_error_returned",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
-					error: errTransformator,
+			name: "transformer_error_returned",
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
+					error: errTransformer,
 				},
 			},
-			expectedError: errTransformator,
+			expectedError: errTransformer,
 		}, {
 			name: "input_processed",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
@@ -199,9 +199,9 @@ func TestAsRange_WithChan(t *testing.T) {
 	} {
 		t.Run(sc.name, func(t *testing.T) {
 			inputCh := make(chan int, 10)
-			sc.transformator.input = inputCh
+			sc.transformer.input = inputCh
 
-			iter := sc.transformator.AsRange(func(err error) {
+			iter := sc.transformer.AsRange(func(err error) {
 				assert.Equal(t, sc.expectedError, err)
 			})
 
@@ -225,7 +225,7 @@ func TestAsRange_WithChan(t *testing.T) {
 func TestAsIndexedRange_WithChan(t *testing.T) {
 	type scenario struct {
 		name           string
-		transformator  stepsTransformator[int, chan int]
+		transformer    stepsTransformer[int, chan int]
 		inputValues    []int
 		expectedOutput map[any]any
 		expectedError  error
@@ -234,37 +234,37 @@ func TestAsIndexedRange_WithChan(t *testing.T) {
 	for _, sc := range []scenario{
 		{
 			name: "empty_input",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
 		}, {
 			name:           "empty_steps",
-			transformator:  stepsTransformator[int, chan int]{},
+			transformer:    stepsTransformer[int, chan int]{},
 			inputValues:    []int{1, 2, 3, 4, 5},
 			expectedOutput: map[any]any{0: 1, 1: 2, 2: 3, 3: 4, 4: 5},
 		}, {
 			name: "step_error_returned",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, errorFn.StepFn},
 				},
 			},
 			inputValues:   []int{1, 2, 3, 4, 5},
 			expectedError: errStep,
 		}, {
-			name: "transformator_error_returned",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
-					error: errTransformator,
+			name: "transformer_error_returned",
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
+					error: errTransformer,
 				},
 			},
-			expectedError: errTransformator,
+			expectedError: errTransformer,
 		}, {
 			name: "input_processed",
-			transformator: stepsTransformator[int, chan int]{
-				transformator: transformator{
+			transformer: stepsTransformer[int, chan int]{
+				transformer: transformer{
 					steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
 				},
 			},
@@ -274,9 +274,9 @@ func TestAsIndexedRange_WithChan(t *testing.T) {
 	} {
 		t.Run(sc.name, func(t *testing.T) {
 			inputCh := make(chan int, 10)
-			sc.transformator.input = inputCh
+			sc.transformer.input = inputCh
 
-			iter := sc.transformator.AsIndexedRange(func(err error) {
+			iter := sc.transformer.AsIndexedRange(func(err error) {
 				assert.Equal(t, sc.expectedError, err)
 			})
 
@@ -301,28 +301,28 @@ func TestAsIndexedRange_WithChan(t *testing.T) {
 }
 
 func TestAsRange_WithSlice_WithoutErrorHandler(t *testing.T) {
-	transformator := stepsTransformator[int, []int]{
+	transformer := stepsTransformer[int, []int]{
 		input: []int{1, 2, 3, 4, 5},
-		transformator: transformator{
+		transformer: transformer{
 			steps: []StepFn{errorFn.StepFn},
 		},
 	}
 	var res []any
-	for i := range transformator.AsRange(nil) {
+	for i := range transformer.AsRange(nil) {
 		res = append(res, i)
 	}
 	assert.Nil(t, res)
 }
 
 func TestAsIndexedRange_WithSlice_WithoutErrorHandler(t *testing.T) {
-	transformator := stepsTransformator[int, []int]{
+	transformer := stepsTransformer[int, []int]{
 		input: []int{1, 2, 3, 4, 5},
-		transformator: transformator{
+		transformer: transformer{
 			steps: []StepFn{errorFn.StepFn},
 		},
 	}
 	res := map[any]any{}
-	for idx, i := range transformator.AsIndexedRange(nil) {
+	for idx, i := range transformer.AsIndexedRange(nil) {
 		res[idx] = i
 	}
 	assert.Empty(t, res)
@@ -330,9 +330,9 @@ func TestAsIndexedRange_WithSlice_WithoutErrorHandler(t *testing.T) {
 
 func TestAsRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	inputCh := make(chan int, 10)
-	transformator := stepsTransformator[int, chan int]{
+	transformer := stepsTransformer[int, chan int]{
 		input: inputCh,
-		transformator: transformator{
+		transformer: transformer{
 			steps: []StepFn{errorFn.StepFn},
 		},
 	}
@@ -344,7 +344,7 @@ func TestAsRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	}(inputCh)
 
 	var res []any
-	for i := range transformator.AsRange(nil) {
+	for i := range transformer.AsRange(nil) {
 		res = append(res, i)
 	}
 	assert.Nil(t, res)
@@ -352,9 +352,9 @@ func TestAsRange_WithChan_WithoutErrorHandler(t *testing.T) {
 
 func TestAsIndexedRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	inputCh := make(chan int, 10)
-	transformator := stepsTransformator[int, chan int]{
+	transformer := stepsTransformer[int, chan int]{
 		input: inputCh,
-		transformator: transformator{
+		transformer: transformer{
 			steps: []StepFn{errorFn.StepFn},
 		},
 	}
@@ -366,7 +366,7 @@ func TestAsIndexedRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	}(inputCh)
 
 	var res []any
-	for i := range transformator.AsIndexedRange(nil) {
+	for i := range transformer.AsIndexedRange(nil) {
 		res = append(res, i)
 	}
 	assert.Nil(t, res)
@@ -396,14 +396,14 @@ func TestAsIndexedRange_WithChan_WithoutErrorHandler(t *testing.T) {
 // 		},
 // 	} {
 // 		t.Run(sc.name, func(t *testing.T) {
-// 			transformator := stepsTransformator[int, []int]{
+// 			transformer := stepsTransformer[int, []int]{
 // 				input: []int{1, 2, 3, 4, 5},
-// 				transformator: transformator{
+// 				transformer: transformer{
 // 					aggregator: sc.reducer,
 // 				},
 // 			}
 //
-// 			res := transformator.AsMultiMap(sc.errorHandler)
+// 			res := transformer.AsMultiMap(sc.errorHandler)
 // 			if sc.errorHandler == nil {
 // 				assert.Equal(t, map[any][]any{1: {2}, 3: {4}}, res)
 // 			}
@@ -433,14 +433,14 @@ func TestAsMap_WithSlice(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			transformator := stepsTransformator[int, []int]{
+			transformer := stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
-				transformator: transformator{
+				transformer: transformer{
 					steps: sc.steps,
 				},
 			}
 
-			res := transformator.AsMap(sc.errorHandler)
+			res := transformer.AsMap(sc.errorHandler)
 			if sc.errorHandler == nil {
 				assert.Equal(t, map[any]any{1: 2, 3: 4}, res)
 			}
@@ -470,9 +470,9 @@ func TestAsMap_WithChan(t *testing.T) {
 	} {
 		t.Run(sc.name, func(t *testing.T) {
 			inputCh := make(chan int, 10)
-			transformator := stepsTransformator[int, chan int]{
+			transformer := stepsTransformer[int, chan int]{
 				input: inputCh,
-				transformator: transformator{
+				transformer: transformer{
 					steps: sc.steps,
 				},
 			}
@@ -484,7 +484,7 @@ func TestAsMap_WithChan(t *testing.T) {
 				close(inputCh)
 			}(inputCh)
 
-			res := transformator.AsMap(sc.errorHandler)
+			res := transformer.AsMap(sc.errorHandler)
 			if sc.errorHandler == nil {
 				assert.Equal(t, map[any]any{1: 2, 3: 4}, res)
 			}
@@ -513,13 +513,13 @@ func TestAsSlice_WithSlice(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			transformator := stepsTransformator[int, []int]{
+			transformer := stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
-				transformator: transformator{
+				transformer: transformer{
 					steps: sc.steps,
 				},
 			}
-			res := transformator.AsSlice(sc.errorHandler)
+			res := transformer.AsSlice(sc.errorHandler)
 			if sc.errorHandler == nil {
 				assert.Equal(t, []any{2, 4}, res)
 			}
@@ -549,9 +549,9 @@ func TestAsSlice_WithChan(t *testing.T) {
 	} {
 		t.Run(sc.name, func(t *testing.T) {
 			inputCh := make(chan int, 10)
-			transformator := stepsTransformator[int, chan int]{
+			transformer := stepsTransformer[int, chan int]{
 				input: inputCh,
-				transformator: transformator{
+				transformer: transformer{
 					steps: sc.steps,
 				},
 			}
@@ -563,7 +563,7 @@ func TestAsSlice_WithChan(t *testing.T) {
 				close(inputCh)
 			}(inputCh)
 
-			res := transformator.AsSlice(sc.errorHandler)
+			res := transformer.AsSlice(sc.errorHandler)
 			if sc.errorHandler == nil {
 				assert.Equal(t, []any{2, 4}, res)
 			}
