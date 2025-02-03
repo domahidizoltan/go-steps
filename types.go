@@ -46,10 +46,16 @@ type (
 	}
 
 	SkipFirstArgValidation struct{}
+
+	TransformerOptions struct {
+		Name string
+	}
 )
 
 var (
 	ErrEmptyTransformInputType = errors.New("first step in type is empty")
 	ErrStepValidationFailed    = errors.New("step validation failed")
 	ErrIncompatibleInArgType   = errors.New("incompatible input argument type")
+	ErrInvalidAggregator       = errors.New("invalid aggregator")
+	ErrInvalidStep             = errors.New("invalid step")
 )

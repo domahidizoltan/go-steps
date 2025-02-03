@@ -6,21 +6,27 @@ import (
 	"reflect"
 )
 
-func emptyErrorHandler[T any, IT inputType[T]](t stepsTransformer[T, IT]) func(error) {
+func handleErrWithTrName[T any, IT inputType[T]](t stepsTransformer[T, IT], err error, errorHandler func(error)) {
+	if len(t.options.Name) != 0 {
+		err = fmt.Errorf("[%s] %w", t.options.Name, err)
+	}
+	errorHandler(err)
+}
+
+func emptyErrorHandler() func(error) {
 	return func(err error) {
-		_ = t
 		fmt.Println("error occured:", err)
 	}
 }
 
 func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any] {
 	if errorHandler == nil {
-		errorHandler = emptyErrorHandler(t)
+		errorHandler = emptyErrorHandler()
 	}
 
 	return func(yield func(any) bool) {
 		if t.error != nil {
-			errorHandler(t.error)
+			handleErrWithTrName(t, t.error, errorHandler)
 			return
 		}
 
@@ -33,7 +39,7 @@ func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any]
 				_, terminated, err = process(v, yield, &t.transformer, false)
 				if terminated || err != nil {
 					if err != nil {
-						errorHandler(err)
+						handleErrWithTrName(t, err, errorHandler)
 					}
 					break
 				}
@@ -44,7 +50,7 @@ func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any]
 				_, terminated, err = process(v, yield, &t.transformer, idx == lastIdx)
 				if terminated || err != nil {
 					if err != nil {
-						errorHandler(err)
+						handleErrWithTrName(t, err, errorHandler)
 					}
 					break
 				}
@@ -61,12 +67,12 @@ func (t stepsTransformer[T, IT]) AsKeyValueRange(errorHandler func(error)) iter.
 
 func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.Seq2[any, any] {
 	if errorHandler == nil {
-		errorHandler = emptyErrorHandler(t)
+		errorHandler = emptyErrorHandler()
 	}
 
 	return func(yield func(any, any) bool) {
 		if t.error != nil {
-			errorHandler(t.error)
+			handleErrWithTrName(t, t.error, errorHandler)
 			return
 		}
 
@@ -79,7 +85,7 @@ func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.S
 				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, false)
 				if terminated || err != nil {
 					if err != nil {
-						errorHandler(err)
+						handleErrWithTrName(t, err, errorHandler)
 					}
 					break
 				}
@@ -91,7 +97,7 @@ func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.S
 				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, idx == lastIdx)
 				if terminated || err != nil {
 					if err != nil {
-						errorHandler(err)
+						handleErrWithTrName(t, err, errorHandler)
 					}
 					break
 				}
@@ -105,7 +111,6 @@ func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.S
 func (t stepsTransformer[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]any {
 	var acc any
 	for _, v := range t.AsIndexedRange(errorHandler) {
-		fmt.Printf("__ %+v\n", reflect.ValueOf(v))
 		acc = v
 	}
 

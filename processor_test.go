@@ -117,6 +117,16 @@ func TestGetValidatedSteps_ReturnsError(t *testing.T) {
 				Steps(mapFn), Steps(Map(func(in *int) (*int, error) { return nil, nil })))},
 			error:       ErrStepValidationFailed,
 			errorDetail: "[WithBranches:3]: step validation failed [Map:1]: incompatible input argument type [int!=*int:1]",
+		}, {
+			name:        "step_without_name",
+			wrappers:    []StepWrapper{mapFn, {StepFn: mapStrFn.StepFn}},
+			error:       ErrInvalidStep,
+			errorDetail: "[:2]",
+		}, {
+			name:        "step_without_stepfn",
+			wrappers:    []StepWrapper{mapFn, {Name: "foo"}},
+			error:       ErrInvalidStep,
+			errorDetail: "[foo:2]",
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {

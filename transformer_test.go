@@ -99,6 +99,18 @@ func TestStepsValidationAndCreation(t *testing.T) {
 			expectedStepWrappers:      []StepWrapper{filterStr},
 			expectedAggregatorWrapper: &groupBy,
 			hasError:                  true,
+		}, {
+			name:                 "aggregator_without_name_returns_error",
+			steps:                Steps(mapStringToInt).Aggregate(ReducerWrapper{ReducerFn: groupBy.ReducerFn}),
+			expectedSteps:        []StepFn{mapStringToInt.StepFn},
+			expectedStepWrappers: []StepWrapper{mapStringToInt},
+			hasError:             true,
+		}, {
+			name:                 "aggregator_without_reducer_returns_error",
+			steps:                Steps(mapStringToInt).Aggregate(ReducerWrapper{Name: "groupBy"}),
+			expectedSteps:        []StepFn{mapStringToInt.StepFn},
+			expectedStepWrappers: []StepWrapper{mapStringToInt},
+			hasError:             true,
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
@@ -222,6 +234,13 @@ func TestChanTransformer(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTransformerOptionsApplied(t *testing.T) {
+	transformer := Transform[int]([]int{1, 2}, WithName("Optimus")).
+		With(Steps(filterEven))
+
+	assert.Equal(t, "Optimus", transformer.options.Name)
 }
 
 func matchSteps(t *testing.T, expected, actual []StepFn) {

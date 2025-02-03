@@ -10,10 +10,12 @@ type (
 	}
 
 	input[T any, IT inputType[T]] struct {
-		data IT
+		data    IT
+		options TransformerOptions
 	}
 
 	transformer struct {
+		options             TransformerOptions
 		error               error
 		aggregator          ReducerFn
 		lastAggregatedValue *StepOutput
@@ -26,11 +28,20 @@ type (
 	}
 )
 
-func Transform[T any, IT inputType[T]](in IT) input[T, IT] {
-	return input[T, IT]{in}
+func WithName(name string) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.Name = name
+	}
 }
 
-// TODO .WithOptions to add debug options, transformer name, etc
+func Transform[T any, IT inputType[T]](in IT, options ...func(*TransformerOptions)) input[T, IT] {
+	opts := TransformerOptions{}
+	for _, withOption := range options {
+		withOption(&opts)
+	}
+	return input[T, IT]{in, opts}
+}
+
 func Steps(s ...StepWrapper) StepsBranch {
 	return StepsBranch{
 		StepWrappers: s,
@@ -44,7 +55,8 @@ func (i input[T, IT]) WithSteps(steps ...StepWrapper) stepsTransformer[T, IT] {
 func (i input[T, IT]) With(steps StepsBranch) stepsTransformer[T, IT] {
 	t := stepsTransformer[T, IT]{
 		transformer: transformer{
-			error: steps.Validate(),
+			options: i.options,
+			error:   steps.Validate(),
 		},
 	}
 	if t.error != nil {
@@ -68,21 +80,30 @@ func (s StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch {
 
 func (s *StepsBranch) Validate() error {
 	if s.Error != nil {
+		s.StepWrappers = nil
 		return s.Error
 	}
 
 	var lastOutTypes ArgTypes
 	s.Steps, lastOutTypes, s.Error = getValidatedSteps[SkipFirstArgValidation](s.StepWrappers)
 
-	if s.AggregatorWrapper != nil {
+	aggWr := s.AggregatorWrapper
+	if aggWr != nil {
 		if s.Error != nil {
+			s.StepWrappers = nil
+			return s.Error
+		}
+
+		if len(aggWr.Name) == 0 || aggWr.ReducerFn == nil {
+			s.Error = ErrInvalidAggregator
+			s.AggregatorWrapper = nil
 			return s.Error
 		}
 
 		if s.Steps == nil {
 			lastOutTypes = ArgTypes{reflect.TypeOf(SkipFirstArgValidation{})}
 		}
-		_, s.Error = s.AggregatorWrapper.Validate(lastOutTypes)
+		_, s.Error = aggWr.Validate(lastOutTypes)
 	}
 
 	return s.Error

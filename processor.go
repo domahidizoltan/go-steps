@@ -15,6 +15,10 @@ func getValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, e
 	outTypes := ArgTypes{transformInputType}
 
 	for pos, wrapper := range stepWrappers {
+		if len(wrapper.Name) == 0 || wrapper.StepFn == nil {
+			return nil, ArgTypes{}, fmt.Errorf("%w [%s:%d]", ErrInvalidStep, wrapper.Name, pos+1)
+		}
+
 		ot, err := wrapper.Validate(outTypes)
 		if err != nil {
 			return nil, ArgTypes{}, fmt.Errorf("%w [%s:%d]: %w", ErrStepValidationFailed, stepWrappers[pos].Name, pos+1, err)
