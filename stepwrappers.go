@@ -14,7 +14,6 @@ func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 				Args:    Args{out},
 				ArgsLen: 1,
 				Error:   err,
-				Skip:    err != nil,
 			}
 		},
 		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
@@ -150,7 +149,6 @@ func Merge() StepWrapper {
 				Args:    Args{in.Args[0].(branch).value},
 				ArgsLen: 1,
 				Error:   nil,
-				Skip:    false,
 			}
 		},
 		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {

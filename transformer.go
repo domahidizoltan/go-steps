@@ -71,6 +71,12 @@ func (i input[T, IT]) With(steps StepsBranch) stepsTransformer[T, IT] {
 	return t
 }
 
+func Aggregate(fn ReducerWrapper) StepsBranch {
+	return StepsBranch{
+		AggregatorWrapper: &fn,
+	}
+}
+
 func (s StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch {
 	return StepsBranch{
 		StepWrappers:      s.StepWrappers,

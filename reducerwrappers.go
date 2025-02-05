@@ -16,7 +16,6 @@ func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, er
 				Args:    Args{acc},
 				ArgsLen: 1,
 				Error:   err,
-				Skip:    true,
 			}
 		},
 		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {

@@ -39,7 +39,8 @@ func TestAsRange_WithSlice(t *testing.T) {
 		}, {
 			name: "empty_steps",
 			transformer: stepsTransformer[int, []int]{
-				input: []int{1, 2, 3, 4, 5},
+				transformer: transformer{},
+				input:       []int{1, 2, 3, 4, 5},
 			},
 			expectedOutput: []any{1, 2, 3, 4, 5},
 		}, {

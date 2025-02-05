@@ -91,7 +91,7 @@ func processIndexed[V any](key any, val V, yield func(any, any) bool, transforme
 }
 
 func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool) {
-	if transformer == nil || len(transformer.steps) == 0 {
+	if transformer == nil || (transformer.steps == nil && transformer.aggregator == nil) {
 		return StepOutput{
 			Args:    [4]any{val},
 			ArgsLen: 1,

@@ -114,6 +114,10 @@ func (t stepsTransformer[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]
 		acc = v
 	}
 
+	if acc == nil {
+		return nil
+	}
+
 	res := map[any][]any{}
 	iter := reflect.ValueOf(acc).MapRange()
 	for iter.Next() {
