@@ -45,7 +45,6 @@ func TestMap_Validate(t *testing.T) {
 		}, {
 			name:         "different_prev_step_out_type",
 			prevStepOut:  ArgTypes{reflect.TypeFor[int]()},
-			expectedOut:  ArgTypes{},
 			expectsError: true,
 		}, {
 			name:        "skip_type_check_when_first_step",
@@ -108,7 +107,6 @@ func TestFilter_Validate(t *testing.T) {
 		}, {
 			name:         "different_prev_step_out_type",
 			prevStepOut:  ArgTypes{reflect.TypeFor[string]()},
-			expectedOut:  ArgTypes{},
 			expectsError: true,
 		}, {
 			name:        "skip_type_check_when_first_step",
@@ -202,7 +200,6 @@ func TestSplit_Validate(t *testing.T) {
 		}, {
 			name:         "different_prev_step_out_type",
 			prevStepOut:  ArgTypes{reflect.TypeFor[string]()},
-			expectedOut:  ArgTypes{},
 			expectsError: true,
 		}, {
 			name:        "skip_type_check_when_first_step",
@@ -253,7 +250,6 @@ func TestMerge_Validate(t *testing.T) {
 		}, {
 			name:         "only_branch_type_as_prev_step_out",
 			prevStepOut:  ArgTypes{reflect.TypeFor[string]()},
-			expectedOut:  ArgTypes{},
 			expectsError: true,
 		}, {
 			name:        "skip_type_check_when_first_step",
@@ -268,6 +264,142 @@ func TestMerge_Validate(t *testing.T) {
 			if sc.expectsError {
 				assert.ErrorIs(t, actualErr, ErrIncompatibleInArgType)
 				assert.ErrorContains(t, actualErr, "[string!=steps.branch:1]")
+			} else {
+				assert.NoError(t, actualErr)
+			}
+		})
+	}
+}
+
+func TestWithBranches_Success(t *testing.T) {
+	split := Split(func(in int) (uint8, error) {
+		return uint8(in % 2), nil
+	})
+	addOne := Map(func(in int) (int, error) {
+		return in + 1, nil
+	})
+	multiplyByTwo := Map(func(in int) (int, error) {
+		return in * 2, nil
+	})
+
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(split,
+			WithBranches[int](
+				Steps(addOne),
+				Steps(multiplyByTwo),
+			),
+			Merge()).
+		AsSlice(expectsError(t, false))
+
+	assert.EqualValues(t, []any{2, 3, 6, 5}, actual)
+}
+
+func TestWithBranches_Failure(t *testing.T) {
+	split := Split(func(in int) (uint8, error) {
+		return uint8(in % 2), nil
+	})
+	addOne := Map(func(in int) (int, error) {
+		if in == 4 {
+			return 0, errors.New("add error")
+		}
+		return in + 1, nil
+	})
+	multiplyByTwo := Map(func(in int) (int, error) {
+		return in * 2, nil
+	})
+
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(split,
+			WithBranches[int](
+				Steps(addOne),
+				Steps(multiplyByTwo),
+			),
+			Merge()).
+		AsSlice(expectsError(t, true))
+
+	assert.EqualValues(t, []any{2, 3, 6}, actual)
+}
+
+func TestWithBranches_Validate(t *testing.T) {
+	for _, sc := range []struct {
+		name                  string
+		prevStepOut           ArgTypes
+		expectedOut           ArgTypes
+		expectsErrorContain   string
+		overrideAddOne        *StepWrapper
+		overrideMultiplyByTwo *StepWrapper
+	}{
+		{
+			name:        "matching_prev_step_out_type",
+			prevStepOut: ArgTypes{reflect.TypeFor[branch]()},
+			expectedOut: ArgTypes{reflect.TypeFor[branch]()},
+		}, {
+			name:                "only_branch_type_as_prev_step_out",
+			prevStepOut:         ArgTypes{reflect.TypeFor[string]()},
+			expectsErrorContain: "[string!=steps.branch:",
+		}, {
+			name:        "skip_type_check_when_first_step",
+			prevStepOut: ArgTypes{reflect.TypeFor[SkipFirstArgValidation]()},
+			expectedOut: ArgTypes{reflect.TypeFor[branch]()},
+		}, {
+			name:        "different_branch_in_type",
+			prevStepOut: ArgTypes{reflect.TypeFor[branch]()},
+			overrideMultiplyByTwo: func() *StepWrapper {
+				m := Map(func(in string) (string, error) {
+					return "", nil
+				})
+				return &m
+			}(),
+			expectsErrorContain: "step validation failed [Map:3]: incompatible input argument type [int!=string:1]",
+		}, {
+			name:        "validates_first_branch",
+			prevStepOut: ArgTypes{reflect.TypeFor[branch]()},
+			overrideAddOne: func() *StepWrapper {
+				m := Map(func(in string) (int, error) {
+					return 0, errors.New("add error")
+				})
+				return &m
+			}(),
+			expectsErrorContain: "step validation failed [Map:2]: incompatible input argument type [int!=string:1]",
+		}, {
+			name:        "validates_second_branch",
+			prevStepOut: ArgTypes{reflect.TypeFor[branch]()},
+			overrideMultiplyByTwo: func() *StepWrapper {
+				m := Map(func(in string) (int, error) {
+					return 0, errors.New("multiply error")
+				})
+				return &m
+			}(),
+			expectsErrorContain: "step validation failed [Map:3]: incompatible input argument type [int!=string:1]",
+		},
+	} {
+		addZero := Map(func(in int) (int, error) {
+			return 0, nil
+		})
+		addOne := Map(func(in int) (int, error) {
+			return in + 1, nil
+		})
+		multiplyByTwo := Map(func(in int) (int, error) {
+			return in * 2, nil
+		})
+
+		t.Run(sc.name, func(t *testing.T) {
+			if sc.overrideAddOne != nil {
+				addOne = *sc.overrideAddOne
+			}
+			if sc.overrideMultiplyByTwo != nil {
+				multiplyByTwo = *sc.overrideMultiplyByTwo
+			}
+
+			actualOut, actualErr := WithBranches[int](
+				Steps(addZero, addOne),
+				Steps(addZero, addZero, multiplyByTwo),
+			).Validate(sc.prevStepOut)
+
+			assert.Equal(t, sc.expectedOut, actualOut)
+			if len(sc.expectsErrorContain) > 0 {
+				assert.ErrorIs(t, actualErr, ErrIncompatibleInArgType)
+				assert.ErrorContains(t, actualErr, sc.expectsErrorContain)
 			} else {
 				assert.NoError(t, actualErr)
 			}

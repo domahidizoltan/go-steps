@@ -52,7 +52,6 @@ func TestGroupBy_Validate(t *testing.T) {
 		}, {
 			name:         "different_prev_step_out_type",
 			prevStepOut:  ArgTypes{reflect.TypeFor[string]()},
-			expectedOut:  ArgTypes{},
 			expectsError: true,
 		}, {
 			name:        "skip_type_check_when_first_step",
