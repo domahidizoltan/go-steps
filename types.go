@@ -2,6 +2,7 @@ package steps
 
 import (
 	"errors"
+	"io"
 	"reflect"
 )
 
@@ -14,8 +15,9 @@ type (
 	ArgTypes  [maxArgs]reflect.Type
 
 	StepInput struct {
-		Args    Args
-		ArgsLen uint8
+		Args               Args
+		ArgsLen            uint8
+		TransformerOptions TransformerOptions
 	}
 
 	StepOutput struct {
@@ -48,7 +50,8 @@ type (
 	SkipFirstArgValidation struct{}
 
 	TransformerOptions struct {
-		Name string
+		Name      string
+		LogWriter io.Writer
 	}
 )
 

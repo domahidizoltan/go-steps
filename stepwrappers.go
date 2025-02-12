@@ -3,6 +3,7 @@ package steps
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
@@ -58,6 +59,46 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	}
 }
 
+func Log(prefix ...string) StepWrapper {
+	return StepWrapper{
+		Name: "Log",
+		StepFn: func(in StepInput) StepOutput {
+			opts := in.TransformerOptions
+			out := strings.Builder{}
+			var err error
+			if len(prefix) != 0 {
+				_, err = out.WriteString(prefix[0] + " ")
+				if err != nil {
+					goto writeErr
+				}
+			}
+			if opts.Name != "" {
+				_, err = out.WriteString("transformer:" + opts.Name + " ")
+				if err != nil {
+					goto writeErr
+				}
+			}
+			for i := range in.ArgsLen {
+				_, err = out.WriteString(fmt.Sprintf("\targ%d: %v ", i, in.Args[i]))
+				if err != nil {
+					goto writeErr
+				}
+			}
+			_, err = fmt.Fprintln(in.TransformerOptions.LogWriter, out.String())
+
+		writeErr:
+			return StepOutput{
+				Args:    in.Args,
+				ArgsLen: in.ArgsLen,
+				Error:   err,
+			}
+		},
+		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
+			return prevStepOut, nil
+		},
+	}
+}
+
 type branch struct {
 	value any
 	T     reflect.Value
@@ -100,15 +141,17 @@ func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 		StepFn: func(in StepInput) StepOutput {
 			keyVal := in.Args[0].(branch)
 			val := StepInput{
-				Args:    Args{keyVal.value},
-				ArgsLen: 1,
+				Args:               Args{keyVal.value},
+				ArgsLen:            1,
+				TransformerOptions: in.TransformerOptions,
 			}
 			var out StepOutput
 			for _, stepWrapper := range stepsBranches[int(keyVal.key)].StepWrappers {
 				out = stepWrapper.StepFn(val)
 				val = StepInput{
-					Args:    out.Args,
-					ArgsLen: out.ArgsLen,
+					Args:               out.Args,
+					ArgsLen:            out.ArgsLen,
+					TransformerOptions: in.TransformerOptions,
 				}
 				if out.Skip || out.Error != nil {
 					break

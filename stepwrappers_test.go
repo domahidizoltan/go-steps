@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"bytes"
 	"errors"
 	"reflect"
 	"strconv"
@@ -128,6 +129,68 @@ func TestFilter_Validate(t *testing.T) {
 			}
 		})
 	}
+}
+
+type testLogWriter struct {
+	output      []byte
+	returnError error
+}
+
+func (t *testLogWriter) ReturnError(err error) {
+	t.returnError = err
+}
+
+func (t *testLogWriter) Write(b []byte) (int, error) {
+	if t.returnError != nil {
+		return 0, t.returnError
+	}
+
+	t.output = append(t.output, b...)
+	return len(b), nil
+}
+
+func TestLog_Success(t *testing.T) {
+	testLogWriter := testLogWriter{}
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithName("testLog"), WithLogWriter(&testLogWriter)).
+		WithSteps(
+			Log("before"),
+			Filter(func(in int) (bool, error) {
+				return in%2 == 0, nil
+			}),
+			Log("after")).
+		AsSlice(expectsError(t, false))
+
+	expectedLogOutput := `before transformer:testLog 	arg0: 1 
+before transformer:testLog 	arg0: 2 
+after transformer:testLog 	arg0: 2 
+before transformer:testLog 	arg0: 3 
+before transformer:testLog 	arg0: 4 
+after transformer:testLog 	arg0: 4 
+`
+	assert.Equal(t, expectedLogOutput, string(testLogWriter.output))
+	assert.Equal(t, []any{2, 4}, actual)
+}
+
+func TestLog_Failure(t *testing.T) {
+	testLogWriter := testLogWriter{}
+	testLogWriter.returnError = errors.New("log error")
+	actual := Transform[int]([]int{1, 2, 3}, WithLogWriter(&testLogWriter)).
+		WithSteps(
+			Log(),
+			Filter(func(in int) (bool, error) {
+				return in%2 == 0, nil
+			})).
+		AsSlice(expectsError(t, true))
+
+	assert.Empty(t, actual)
+}
+
+func TestLog_Validate_ReturnsSameArgTypes(t *testing.T) {
+	prevStepOut := ArgTypes{reflect.TypeFor[SkipFirstArgValidation](), reflect.TypeFor[float32]()}
+	actualOut, actualErr := Log().Validate(prevStepOut)
+
+	assert.Equal(t, prevStepOut, actualOut)
+	assert.NoError(t, actualErr)
 }
 
 type evenOdd uint8
@@ -282,16 +345,18 @@ func TestWithBranches_Success(t *testing.T) {
 		return in * 2, nil
 	})
 
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	testLogWriter := testLogWriter{}
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithLogWriter(&testLogWriter)).
 		WithSteps(split,
 			WithBranches[int](
 				Steps(addOne),
-				Steps(multiplyByTwo),
+				Steps(Log("test"), multiplyByTwo),
 			),
 			Merge()).
 		AsSlice(expectsError(t, false))
 
 	assert.EqualValues(t, []any{2, 3, 6, 5}, actual)
+	assert.True(t, bytes.HasPrefix(testLogWriter.output, []byte("test")))
 }
 
 func TestWithBranches_Failure(t *testing.T) {

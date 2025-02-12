@@ -13,15 +13,9 @@ func handleErrWithTrName[T any, IT inputType[T]](t stepsTransformer[T, IT], err 
 	errorHandler(err)
 }
 
-func emptyErrorHandler() func(error) {
-	return func(err error) {
-		fmt.Println("error occured:", err)
-	}
-}
-
 func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any] {
 	if errorHandler == nil {
-		errorHandler = emptyErrorHandler()
+		errorHandler = t.emptyErrorHandler()
 	}
 
 	return func(yield func(any) bool) {
@@ -67,7 +61,7 @@ func (t stepsTransformer[T, IT]) AsKeyValueRange(errorHandler func(error)) iter.
 
 func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.Seq2[any, any] {
 	if errorHandler == nil {
-		errorHandler = emptyErrorHandler()
+		errorHandler = t.emptyErrorHandler()
 	}
 
 	return func(yield func(any, any) bool) {

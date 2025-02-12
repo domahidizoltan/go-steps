@@ -99,9 +99,11 @@ func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool)
 	}
 
 	in := StepInput{
-		Args:    [4]any{val},
-		ArgsLen: 1,
+		Args:               [4]any{val},
+		ArgsLen:            1,
+		TransformerOptions: transformer.options,
 	}
+
 	var skipped bool
 	var out StepOutput
 	for _, fn := range transformer.steps {
@@ -112,8 +114,9 @@ func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool)
 		}
 
 		in = StepInput{
-			Args:    out.Args,
-			ArgsLen: out.ArgsLen,
+			Args:               out.Args,
+			ArgsLen:            out.ArgsLen,
+			TransformerOptions: transformer.options,
 		}
 	}
 
