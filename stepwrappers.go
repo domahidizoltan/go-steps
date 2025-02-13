@@ -32,6 +32,19 @@ func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 	}
 }
 
+func simpleFilterValidation[IN0 any](prevStepOut ArgTypes) (ArgTypes, error) {
+	inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
+	for i := range maxArgs {
+		if i == 0 && prevStepOut[0] == reflect.TypeFor[SkipFirstArgValidation]() {
+			continue
+		}
+		if prevStepOut[i] != inArgTypes[i] {
+			return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
+		}
+	}
+	return ArgTypes{reflect.TypeFor[IN0]()}, nil
+}
+
 func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Filter",
@@ -44,18 +57,81 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 				Skip:    !ok,
 			}
 		},
-		Validate: func(prevStepOut ArgTypes) (ArgTypes, error) {
-			inArgTypes := ArgTypes{reflect.TypeFor[IN0]()}
-			for i := range maxArgs {
-				if i == 0 && prevStepOut[0] == reflect.TypeFor[SkipFirstArgValidation]() {
-					continue
-				}
-				if prevStepOut[i] != inArgTypes[i] {
-					return ArgTypes{}, fmt.Errorf("%w [%s!=%s:%d]", ErrIncompatibleInArgType, prevStepOut[i].String(), inArgTypes[i].String(), i+1)
-				}
+		Validate: simpleFilterValidation[IN0],
+	}
+}
+
+func Take[IN0 any](count uint64) StepWrapper {
+	var counter uint64
+	return StepWrapper{
+		Name: "Take",
+		StepFn: func(in StepInput) StepOutput {
+			skip := counter >= count
+			counter++
+			return StepOutput{
+				Args:    Args{in.Args[0].(IN0)},
+				ArgsLen: 1,
+				Skip:    skip,
 			}
-			return ArgTypes{reflect.TypeFor[IN0]()}, nil
 		},
+		Validate: simpleFilterValidation[IN0],
+	}
+}
+
+func TakeWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
+	var skip bool
+	return StepWrapper{
+		Name: "TakeWhile",
+		StepFn: func(in StepInput) StepOutput {
+			ok, err := fn(in.Args[0].(IN0))
+			if !skip && !ok {
+				skip = true
+			}
+			return StepOutput{
+				Args:    Args{in.Args[0].(IN0)},
+				ArgsLen: 1,
+				Error:   err,
+				Skip:    skip,
+			}
+		},
+		Validate: simpleFilterValidation[IN0],
+	}
+}
+
+func Skip[IN0 any](count uint64) StepWrapper {
+	var counter uint64
+	return StepWrapper{
+		Name: "Skip",
+		StepFn: func(in StepInput) StepOutput {
+			skip := counter < count
+			counter++
+			return StepOutput{
+				Args:    Args{in.Args[0].(IN0)},
+				ArgsLen: 1,
+				Skip:    skip,
+			}
+		},
+		Validate: simpleFilterValidation[IN0],
+	}
+}
+
+func SkipWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
+	skip := true
+	return StepWrapper{
+		Name: "SkipWhile",
+		StepFn: func(in StepInput) StepOutput {
+			ok, err := fn(in.Args[0].(IN0))
+			if skip && !ok {
+				skip = false
+			}
+			return StepOutput{
+				Args:    Args{in.Args[0].(IN0)},
+				ArgsLen: 1,
+				Error:   err,
+				Skip:    skip,
+			}
+		},
+		Validate: simpleFilterValidation[IN0],
 	}
 }
 

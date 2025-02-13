@@ -69,6 +69,42 @@ func TestMap_Validate(t *testing.T) {
 	}
 }
 
+func testSimpleFilterValidate(t *testing.T, stepWrapper StepWrapper) {
+	t.Helper()
+	for _, sc := range []struct {
+		name         string
+		prevStepOut  ArgTypes
+		expectedOut  ArgTypes
+		expectsError bool
+	}{
+		{
+			name:        "matching_prev_step_out_type",
+			prevStepOut: ArgTypes{reflect.TypeFor[int]()},
+			expectedOut: ArgTypes{reflect.TypeFor[int]()},
+		}, {
+			name:         "different_prev_step_out_type",
+			prevStepOut:  ArgTypes{reflect.TypeFor[string]()},
+			expectsError: true,
+		}, {
+			name:        "skip_type_check_when_first_step",
+			prevStepOut: ArgTypes{reflect.TypeFor[SkipFirstArgValidation]()},
+			expectedOut: ArgTypes{reflect.TypeFor[int]()},
+		},
+	} {
+		t.Run(sc.name, func(t *testing.T) {
+			actualOut, actualErr := stepWrapper.Validate(sc.prevStepOut)
+
+			assert.Equal(t, sc.expectedOut, actualOut)
+			if sc.expectsError {
+				assert.ErrorIs(t, actualErr, ErrIncompatibleInArgType)
+				assert.ErrorContains(t, actualErr, "[string!=int:1]")
+			} else {
+				assert.NoError(t, actualErr)
+			}
+		})
+	}
+}
+
 func TestFilter_Success(t *testing.T) {
 	actual := Transform[int]([]int{1, 2, 3, 4}).
 		WithSteps(
@@ -95,40 +131,91 @@ func TestFilter_Failure(t *testing.T) {
 }
 
 func TestFilter_Validate(t *testing.T) {
-	for _, sc := range []struct {
-		name         string
-		prevStepOut  ArgTypes
-		expectedOut  ArgTypes
-		expectsError bool
-	}{
-		{
-			name:        "matching_prev_step_out_type",
-			prevStepOut: ArgTypes{reflect.TypeFor[int]()},
-			expectedOut: ArgTypes{reflect.TypeFor[int]()},
-		}, {
-			name:         "different_prev_step_out_type",
-			prevStepOut:  ArgTypes{reflect.TypeFor[string]()},
-			expectsError: true,
-		}, {
-			name:        "skip_type_check_when_first_step",
-			prevStepOut: ArgTypes{reflect.TypeFor[SkipFirstArgValidation]()},
-			expectedOut: ArgTypes{reflect.TypeFor[int]()},
-		},
-	} {
-		t.Run(sc.name, func(t *testing.T) {
-			actualOut, actualErr := Filter(func(in int) (bool, error) {
-				return true, nil
-			}).Validate(sc.prevStepOut)
+	testSimpleFilterValidate(t, Filter(func(in int) (bool, error) {
+		return true, nil
+	}))
+}
 
-			assert.Equal(t, sc.expectedOut, actualOut)
-			if sc.expectsError {
-				assert.ErrorIs(t, actualErr, ErrIncompatibleInArgType)
-				assert.ErrorContains(t, actualErr, "[string!=int:1]")
-			} else {
-				assert.NoError(t, actualErr)
-			}
-		})
-	}
+func TestTake_Success(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(Take[int](2)).
+		AsSlice(expectsError(t, false))
+
+	assert.Equal(t, []any{1, 2}, actual)
+}
+
+func TestTake_Validate(t *testing.T) {
+	testSimpleFilterValidate(t, Take[int](0))
+}
+
+func TestTakeWhile_Success(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(
+			TakeWhile(func(in int) (bool, error) {
+				return in <= 2, nil
+			})).
+		AsSlice(expectsError(t, false))
+
+	assert.Equal(t, []any{1, 2}, actual)
+}
+
+func TestTakeWhile_Failure(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(
+			TakeWhile(func(in int) (bool, error) {
+				if in == 2 {
+					return false, errors.New("TakeWhile error")
+				}
+				return true, nil
+			})).
+		AsSlice(expectsError(t, true))
+
+	assert.Equal(t, []any{1}, actual)
+}
+
+func TestTakeWhile_Validate(t *testing.T) {
+	testSimpleFilterValidate(t, Take[int](0))
+}
+
+func TestSkip_Success(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(Skip[int](2)).
+		AsSlice(expectsError(t, false))
+
+	assert.Equal(t, []any{3, 4}, actual)
+}
+
+func TestSkip_Validate(t *testing.T) {
+	testSimpleFilterValidate(t, Skip[int](0))
+}
+
+func TestSkipWhile_Success(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(
+			SkipWhile(func(in int) (bool, error) {
+				return in <= 2, nil
+			})).
+		AsSlice(expectsError(t, false))
+
+	assert.Equal(t, []any{3, 4}, actual)
+}
+
+func TestSkipWhile_Failure(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(
+			SkipWhile(func(in int) (bool, error) {
+				if in == 2 {
+					return false, errors.New("SkipWhile error")
+				}
+				return true, nil
+			})).
+		AsSlice(expectsError(t, true))
+
+	assert.Empty(t, actual)
+}
+
+func TestSkipWhile_Validate(t *testing.T) {
+	testSimpleFilterValidate(t, Skip[int](0))
 }
 
 type testLogWriter struct {
