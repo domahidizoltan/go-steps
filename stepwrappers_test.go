@@ -236,6 +236,47 @@ func (t *testLogWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+func TestDo_Success(t *testing.T) {
+	doCounter := 0
+	actual := Transform[int]([]int{1, 2, 3, 4}).
+		WithSteps(
+			Do(func(in int) error {
+				doCounter++
+				return nil
+			}),
+			Filter(func(in int) (bool, error) {
+				return in%2 == 0, nil
+			}),
+		).
+		AsSlice(expectsError(t, false))
+
+	assert.Equal(t, doCounter, 4)
+	assert.Equal(t, []any{2, 4}, actual)
+}
+
+func TestDo_Failure(t *testing.T) {
+	actual := Transform[int]([]int{1, 2, 3}).
+		WithSteps(
+			Do(func(in int) error {
+				if in == 3 {
+					return errors.New("do error")
+				}
+				return nil
+			}),
+			Filter(func(in int) (bool, error) {
+				return in%2 == 0, nil
+			})).
+		AsSlice(expectsError(t, true))
+
+	assert.Equal(t, []any{2}, actual)
+}
+
+func TestDo_Validate(t *testing.T) {
+	testSimpleFilterValidate(t, Do(func(in int) error {
+		return nil
+	}))
+}
+
 func TestLog_Success(t *testing.T) {
 	testLogWriter := testLogWriter{}
 	actual := Transform[int]([]int{1, 2, 3, 4}, WithName("testLog"), WithLogWriter(&testLogWriter)).

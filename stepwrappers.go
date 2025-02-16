@@ -135,6 +135,21 @@ func SkipWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	}
 }
 
+func Do[IN0 any](fn func(in IN0) error) StepWrapper {
+	return StepWrapper{
+		Name: "Do",
+		StepFn: func(in StepInput) StepOutput {
+			err := fn(in.Args[0].(IN0))
+			return StepOutput{
+				Args:    in.Args,
+				ArgsLen: in.ArgsLen,
+				Error:   err,
+			}
+		},
+		Validate: simpleFilterValidation[IN0],
+	}
+}
+
 func Log(prefix ...string) StepWrapper {
 	return StepWrapper{
 		Name: "Log",
