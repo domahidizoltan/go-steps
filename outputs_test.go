@@ -75,10 +75,11 @@ func TestAsRange_WithSlice(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			iter := sc.transformer.AsRange(func(err error) {
+			sc.transformer.options.ErrorHandler = func(err error) {
 				assert.True(t, strings.HasPrefix(err.Error(), "["+tfName))
 				assert.ErrorIs(t, err, sc.expectedError)
-			})
+			}
+			iter := sc.transformer.AsRange()
 
 			var res []any
 			for i := range iter {
@@ -144,10 +145,11 @@ func TestAsIndexedRange_WithSlice(t *testing.T) {
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
-			iter := sc.transformer.AsIndexedRange(func(err error) {
+			sc.transformer.options.ErrorHandler = func(err error) {
 				assert.True(t, strings.HasPrefix(err.Error(), "["+tfName))
 				assert.ErrorIs(t, err, sc.expectedError)
-			})
+			}
+			iter := sc.transformer.AsIndexedRange()
 
 			res := map[any]any{}
 			for idx, i := range iter {
@@ -219,11 +221,12 @@ func TestAsRange_WithChan(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			inputCh := make(chan int, 10)
 			sc.transformer.input = inputCh
-
-			iter := sc.transformer.AsRange(func(err error) {
+			sc.transformer.options.ErrorHandler = func(err error) {
 				assert.True(t, strings.HasPrefix(err.Error(), "["+tfName))
 				assert.ErrorIs(t, err, sc.expectedError)
-			})
+			}
+
+			iter := sc.transformer.AsRange()
 
 			go func(inputCh chan int) {
 				for _, v := range sc.inputValues {
@@ -299,11 +302,12 @@ func TestAsIndexedRange_WithChan(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			inputCh := make(chan int, 10)
 			sc.transformer.input = inputCh
-
-			iter := sc.transformer.AsIndexedRange(func(err error) {
+			sc.transformer.options.ErrorHandler = func(err error) {
 				assert.True(t, strings.HasPrefix(err.Error(), "["+tfName))
 				assert.ErrorIs(t, err, sc.expectedError)
-			})
+			}
+
+			iter := sc.transformer.AsIndexedRange()
 
 			go func(inputCh chan int) {
 				for _, v := range sc.inputValues {
@@ -333,8 +337,9 @@ func TestAsRange_WithSlice_WithoutErrorHandler(t *testing.T) {
 			steps:   []StepFn{errorFn.StepFn},
 		},
 	}
+	transformer.options.ErrorHandler = func(err error) {}
 	var res []any
-	for i := range transformer.AsRange(nil) {
+	for i := range transformer.AsRange() {
 		res = append(res, i)
 	}
 	assert.Nil(t, res)
@@ -348,8 +353,9 @@ func TestAsIndexedRange_WithSlice_WithoutErrorHandler(t *testing.T) {
 			steps:   []StepFn{errorFn.StepFn},
 		},
 	}
+	transformer.options.ErrorHandler = func(err error) {}
 	res := map[any]any{}
-	for idx, i := range transformer.AsIndexedRange(nil) {
+	for idx, i := range transformer.AsIndexedRange() {
 		res[idx] = i
 	}
 	assert.Empty(t, res)
@@ -364,6 +370,7 @@ func TestAsRange_WithChan_WithoutErrorHandler(t *testing.T) {
 			steps:   []StepFn{errorFn.StepFn},
 		},
 	}
+	transformer.options.ErrorHandler = func(err error) {}
 	go func(inputCh chan int) {
 		for _, v := range []int{1, 2, 3, 4, 5} {
 			inputCh <- v
@@ -372,7 +379,7 @@ func TestAsRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	}(inputCh)
 
 	var res []any
-	for i := range transformer.AsRange(nil) {
+	for i := range transformer.AsRange() {
 		res = append(res, i)
 	}
 	assert.Nil(t, res)
@@ -387,6 +394,7 @@ func TestAsIndexedRange_WithChan_WithoutErrorHandler(t *testing.T) {
 			steps:   []StepFn{errorFn.StepFn},
 		},
 	}
+	transformer.options.ErrorHandler = func(err error) {}
 	go func(inputCh chan int) {
 		for _, v := range []int{1, 2, 3, 4, 5} {
 			inputCh <- v
@@ -395,7 +403,7 @@ func TestAsIndexedRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	}(inputCh)
 
 	var res []any
-	for i := range transformer.AsIndexedRange(nil) {
+	for i := range transformer.AsIndexedRange() {
 		res = append(res, i)
 	}
 	assert.Nil(t, res)
@@ -466,12 +474,12 @@ func TestAsMap_WithSlice(t *testing.T) {
 			transformer := stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
 				transformer: transformer{
-					options: opts,
+					options: optsWithErrHandler(sc.errorHandler),
 					steps:   sc.steps,
 				},
 			}
 
-			res := transformer.AsMap(sc.errorHandler)
+			res := transformer.AsMap()
 			if sc.errorHandler == nil {
 				assert.Equal(t, map[any]any{1: 2, 3: 4}, res)
 			}
@@ -505,7 +513,7 @@ func TestAsMap_WithChan(t *testing.T) {
 			transformer := stepsTransformer[int, chan int]{
 				input: inputCh,
 				transformer: transformer{
-					options: opts,
+					options: optsWithErrHandler(sc.errorHandler),
 					steps:   sc.steps,
 				},
 			}
@@ -517,7 +525,7 @@ func TestAsMap_WithChan(t *testing.T) {
 				close(inputCh)
 			}(inputCh)
 
-			res := transformer.AsMap(sc.errorHandler)
+			res := transformer.AsMap()
 			if sc.errorHandler == nil {
 				assert.Equal(t, map[any]any{1: 2, 3: 4}, res)
 			}
@@ -550,11 +558,11 @@ func TestAsSlice_WithSlice(t *testing.T) {
 			transformer := stepsTransformer[int, []int]{
 				input: []int{1, 2, 3, 4, 5},
 				transformer: transformer{
-					options: opts,
+					options: optsWithErrHandler(sc.errorHandler),
 					steps:   sc.steps,
 				},
 			}
-			res := transformer.AsSlice(sc.errorHandler)
+			res := transformer.AsSlice()
 			if sc.errorHandler == nil {
 				assert.Equal(t, []any{2, 4}, res)
 			}
@@ -588,7 +596,7 @@ func TestAsSlice_WithChan(t *testing.T) {
 			transformer := stepsTransformer[int, chan int]{
 				input: inputCh,
 				transformer: transformer{
-					options: opts,
+					options: optsWithErrHandler(sc.errorHandler),
 					steps:   sc.steps,
 				},
 			}
@@ -600,10 +608,16 @@ func TestAsSlice_WithChan(t *testing.T) {
 				close(inputCh)
 			}(inputCh)
 
-			res := transformer.AsSlice(sc.errorHandler)
+			res := transformer.AsSlice()
 			if sc.errorHandler == nil {
 				assert.Equal(t, []any{2, 4}, res)
 			}
 		})
 	}
+}
+
+func optsWithErrHandler(errHandler func(error)) TransformerOptions {
+	opts := opts
+	opts.ErrorHandler = errHandler
+	return opts
 }

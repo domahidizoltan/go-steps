@@ -1,9 +1,15 @@
 package steps
 
 import (
+	"bytes"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
+	"io"
 	"iter"
 	"reflect"
+
+	"github.com/jszwec/csvutil"
 )
 
 func handleErrWithTrName[T any, IT inputType[T]](t stepsTransformer[T, IT], err error, errorHandler func(error)) {
@@ -13,14 +19,10 @@ func handleErrWithTrName[T any, IT inputType[T]](t stepsTransformer[T, IT], err 
 	errorHandler(err)
 }
 
-func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any] {
-	if errorHandler == nil {
-		errorHandler = t.emptyErrorHandler()
-	}
-
+func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 	return func(yield func(any) bool) {
 		if t.error != nil {
-			handleErrWithTrName(t, t.error, errorHandler)
+			handleErrWithTrName(t, t.error, t.options.ErrorHandler)
 			return
 		}
 
@@ -33,7 +35,7 @@ func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any]
 				_, terminated, err = process(v, yield, &t.transformer, false)
 				if terminated || err != nil {
 					if err != nil {
-						handleErrWithTrName(t, err, errorHandler)
+						handleErrWithTrName(t, err, t.options.ErrorHandler)
 					}
 					break
 				}
@@ -44,7 +46,7 @@ func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any]
 				_, terminated, err = process(v, yield, &t.transformer, idx == lastIdx)
 				if terminated || err != nil {
 					if err != nil {
-						handleErrWithTrName(t, err, errorHandler)
+						handleErrWithTrName(t, err, t.options.ErrorHandler)
 					}
 					break
 				}
@@ -55,18 +57,14 @@ func (t stepsTransformer[T, IT]) AsRange(errorHandler func(error)) iter.Seq[any]
 	}
 }
 
-func (t stepsTransformer[T, IT]) AsKeyValueRange(errorHandler func(error)) iter.Seq2[any, any] {
-	return t.AsIndexedRange(errorHandler)
+func (t stepsTransformer[T, IT]) AsKeyValueRange() iter.Seq2[any, any] {
+	return t.AsIndexedRange()
 }
 
-func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.Seq2[any, any] {
-	if errorHandler == nil {
-		errorHandler = t.emptyErrorHandler()
-	}
-
+func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 	return func(yield func(any, any) bool) {
 		if t.error != nil {
-			handleErrWithTrName(t, t.error, errorHandler)
+			handleErrWithTrName(t, t.error, t.options.ErrorHandler)
 			return
 		}
 
@@ -79,7 +77,7 @@ func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.S
 				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, false)
 				if terminated || err != nil {
 					if err != nil {
-						handleErrWithTrName(t, err, errorHandler)
+						handleErrWithTrName(t, err, t.options.ErrorHandler)
 					}
 					break
 				}
@@ -91,7 +89,7 @@ func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.S
 				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, idx == lastIdx)
 				if terminated || err != nil {
 					if err != nil {
-						handleErrWithTrName(t, err, errorHandler)
+						handleErrWithTrName(t, err, t.options.ErrorHandler)
 					}
 					break
 				}
@@ -102,9 +100,9 @@ func (t stepsTransformer[T, IT]) AsIndexedRange(errorHandler func(error)) iter.S
 	}
 }
 
-func (t stepsTransformer[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]any {
+func (t stepsTransformer[T, IT]) AsMultiMap() map[any][]any {
 	var acc any
-	for _, v := range t.AsIndexedRange(errorHandler) {
+	for _, v := range t.AsIndexedRange() {
 		acc = v
 	}
 
@@ -126,19 +124,61 @@ func (t stepsTransformer[T, IT]) AsMultiMap(errorHandler func(error)) map[any][]
 	return res
 }
 
-func (t stepsTransformer[T, IT]) AsMap(errorHandler func(error)) map[any]any {
+func (t stepsTransformer[T, IT]) AsMap() map[any]any {
 	res := map[any]any{}
-	for k, v := range t.AsIndexedRange(errorHandler) {
+	for k, v := range t.AsIndexedRange() {
 		res[k] = v
 	}
 	return res
 }
 
-func (t stepsTransformer[T, IT]) AsSlice(errorHandler func(error)) []any {
+func (t stepsTransformer[T, IT]) AsSlice() []any {
 	var res []any
-	for v := range t.AsRange(errorHandler) {
+	for v := range t.AsRange() {
 		res = append(res, v)
 	}
 
 	return res
+}
+
+func (t stepsTransformer[T, IT]) AsCsv() string {
+	data := t.AsSlice()
+	res, err := csvutil.Marshal(data)
+	if err != nil {
+		handleErrWithTrName(t, err, t.options.ErrorHandler)
+	}
+	return string(res)
+}
+
+func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	enc := csvutil.NewEncoder(w)
+
+	for record := range t.AsRange() {
+		err := enc.Encode(record)
+		if err != nil {
+			handleErrWithTrName(t, err, t.options.ErrorHandler)
+		}
+	}
+}
+
+func (t stepsTransformer[T, IT]) AsJson() string {
+	data := t.AsSlice()
+	res, err := json.Marshal(data)
+	if err != nil {
+		handleErrWithTrName(t, err, t.options.ErrorHandler)
+	}
+	return string(res)
+}
+
+func (t stepsTransformer[T, IT]) ToStreamingJson(writer io.Writer) {
+	enc := json.NewEncoder(writer)
+
+	for record := range t.AsRange() {
+		err := enc.Encode(record)
+		if err != nil {
+			handleErrWithTrName(t, err, t.options.ErrorHandler)
+		}
+	}
 }

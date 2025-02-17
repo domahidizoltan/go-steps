@@ -10,12 +10,12 @@ import (
 )
 
 func TestGroupBy_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			GroupBy(func(in int) (bool, int, error) {
 				return in%2 == 0, in, nil
 			}))).
-		AsMultiMap(expectsError(t, false))
+		AsMultiMap()
 
 	expected := map[any][]any{
 		true:  {2, 4},
@@ -25,7 +25,7 @@ func TestGroupBy_Success(t *testing.T) {
 }
 
 func TestGroupBy_Failure(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, true))).
 		With(Aggregate(
 			GroupBy(func(in int) (bool, int, error) {
 				var err error
@@ -34,7 +34,7 @@ func TestGroupBy_Failure(t *testing.T) {
 				}
 				return in%2 == 0, in, err
 			}))).
-		AsMultiMap(expectsError(t, true))
+		AsMultiMap()
 
 	assert.Nil(t, actual)
 }
@@ -77,18 +77,18 @@ func TestGroupBy_Validate(t *testing.T) {
 }
 
 func TestFold_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			Fold(-4, func(in1, in2 int) (int, error) {
 				return in1 + in2, nil
 			}))).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{6}, actual)
 }
 
 func TestFold_Failure(t *testing.T) {
-	actual := Transform[int]([]int{1, 2}).
+	actual := Transform[int]([]int{1, 2}, WithErrorHandler(expectsError(t, true))).
 		With(Aggregate(
 			Fold(-4, func(in1, in2 int) (int, error) {
 				var err error
@@ -97,7 +97,7 @@ func TestFold_Failure(t *testing.T) {
 				}
 				return in1 + in2, err
 			}))).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Nil(t, actual)
 }
@@ -141,22 +141,22 @@ func TestFold_Validate(t *testing.T) {
 
 // the following reducers are re-using Fold, so only the happy paths are tested here
 func TestReduce_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			Reduce(func(in1, in2 int) (int, error) {
 				return in1 + in2, nil
 			}))).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{10}, actual)
 }
 
 func TestSum_Success(t *testing.T) {
-	actual := Transform[uint8]([]uint8{1, 2, 3, 4}).
+	actual := Transform[uint8]([]uint8{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			Sum[uint8](),
 		)).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{uint8(10)}, actual)
 }
@@ -182,11 +182,11 @@ func TestMax_Success(t *testing.T) {
 
 func testMax[T number](t *testing.T, input []T, expected T) {
 	t.Helper()
-	actual := Transform[T](input).
+	actual := Transform[T](input, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			Max[T](),
 		)).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	switch reflect.TypeFor[T]().Kind() {
 	case reflect.Float32:
@@ -219,11 +219,11 @@ func TestMin_Success(t *testing.T) {
 
 func testMin[T number](t *testing.T, input []T, expected T) {
 	t.Helper()
-	actual := Transform[T](input).
+	actual := Transform[T](input, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			Min[T](),
 		)).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	switch reflect.TypeFor[T]().Kind() {
 	case reflect.Float32:
@@ -238,11 +238,11 @@ func testMin[T number](t *testing.T, input []T, expected T) {
 }
 
 func TestAvg_Success(t *testing.T) {
-	actual := Transform[float64]([]float64{-1.25, 1.33, -0.77}).
+	actual := Transform[float64]([]float64{-1.25, 1.33, -0.77}, WithErrorHandler(expectsError(t, false))).
 		With(Aggregate(
 			Avg(),
 		)).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Less(t, math.Abs(float64(-0.23)-actual[0].(float64)), float64EqualityThreshold)
 }

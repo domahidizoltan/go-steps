@@ -11,23 +11,23 @@ import (
 )
 
 func TestMap_Success(t *testing.T) {
-	actual := Transform[string]([]string{"1", "2"}).
+	actual := Transform[string]([]string{"1", "2"}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			Map(func(in string) (int, error) {
 				return strconv.Atoi(in)
 			})).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{1, 2}, actual)
 }
 
 func TestMap_Failure(t *testing.T) {
-	actual := Transform[string]([]string{"1", "x", "2"}).
+	actual := Transform[string]([]string{"1", "x", "2"}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			Map(func(in string) (int, error) {
 				return strconv.Atoi(in)
 			})).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Equal(t, []any{1}, actual)
 }
@@ -106,18 +106,18 @@ func testSimpleFilterValidate(t *testing.T, stepWrapper StepWrapper) {
 }
 
 func TestFilter_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			Filter(func(in int) (bool, error) {
 				return in%2 == 0, nil
 			})).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{2, 4}, actual)
 }
 
 func TestFilter_Failure(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3}).
+	actual := Transform[int]([]int{1, 2, 3}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			Filter(func(in int) (bool, error) {
 				if in == 2 {
@@ -125,7 +125,7 @@ func TestFilter_Failure(t *testing.T) {
 				}
 				return true, nil
 			})).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Equal(t, []any{1}, actual)
 }
@@ -137,9 +137,9 @@ func TestFilter_Validate(t *testing.T) {
 }
 
 func TestTake_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(Take[int](2)).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{1, 2}, actual)
 }
@@ -149,18 +149,18 @@ func TestTake_Validate(t *testing.T) {
 }
 
 func TestTakeWhile_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			TakeWhile(func(in int) (bool, error) {
 				return in <= 2, nil
 			})).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{1, 2}, actual)
 }
 
 func TestTakeWhile_Failure(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			TakeWhile(func(in int) (bool, error) {
 				if in == 2 {
@@ -168,7 +168,7 @@ func TestTakeWhile_Failure(t *testing.T) {
 				}
 				return true, nil
 			})).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Equal(t, []any{1}, actual)
 }
@@ -178,9 +178,9 @@ func TestTakeWhile_Validate(t *testing.T) {
 }
 
 func TestSkip_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(Skip[int](2)).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{3, 4}, actual)
 }
@@ -190,18 +190,18 @@ func TestSkip_Validate(t *testing.T) {
 }
 
 func TestSkipWhile_Success(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			SkipWhile(func(in int) (bool, error) {
 				return in <= 2, nil
 			})).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, []any{3, 4}, actual)
 }
 
 func TestSkipWhile_Failure(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			SkipWhile(func(in int) (bool, error) {
 				if in == 2 {
@@ -209,7 +209,7 @@ func TestSkipWhile_Failure(t *testing.T) {
 				}
 				return true, nil
 			})).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Empty(t, actual)
 }
@@ -238,7 +238,7 @@ func (t *testLogWriter) Write(b []byte) (int, error) {
 
 func TestDo_Success(t *testing.T) {
 	doCounter := 0
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			Do(func(in int) error {
 				doCounter++
@@ -248,14 +248,14 @@ func TestDo_Success(t *testing.T) {
 				return in%2 == 0, nil
 			}),
 		).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.Equal(t, doCounter, 4)
 	assert.Equal(t, []any{2, 4}, actual)
 }
 
 func TestDo_Failure(t *testing.T) {
-	actual := Transform[int]([]int{1, 2, 3}).
+	actual := Transform[int]([]int{1, 2, 3}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			Do(func(in int) error {
 				if in == 3 {
@@ -266,7 +266,7 @@ func TestDo_Failure(t *testing.T) {
 			Filter(func(in int) (bool, error) {
 				return in%2 == 0, nil
 			})).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Equal(t, []any{2}, actual)
 }
@@ -279,14 +279,14 @@ func TestDo_Validate(t *testing.T) {
 
 func TestLog_Success(t *testing.T) {
 	testLogWriter := testLogWriter{}
-	actual := Transform[int]([]int{1, 2, 3, 4}, WithName("testLog"), WithLogWriter(&testLogWriter)).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithName("testLog"), WithLogWriter(&testLogWriter), WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			Log("before"),
 			Filter(func(in int) (bool, error) {
 				return in%2 == 0, nil
 			}),
 			Log("after")).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	expectedLogOutput := `before transformer:testLog 	arg0: 1 
 before transformer:testLog 	arg0: 2 
@@ -302,13 +302,13 @@ after transformer:testLog 	arg0: 4
 func TestLog_Failure(t *testing.T) {
 	testLogWriter := testLogWriter{}
 	testLogWriter.returnError = errors.New("log error")
-	actual := Transform[int]([]int{1, 2, 3}, WithLogWriter(&testLogWriter)).
+	actual := Transform[int]([]int{1, 2, 3}, WithLogWriter(&testLogWriter), WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			Log(),
 			Filter(func(in int) (bool, error) {
 				return in%2 == 0, nil
 			})).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.Empty(t, actual)
 }
@@ -330,7 +330,7 @@ const (
 
 func TestSplit_Success(t *testing.T) {
 	actual := map[uint8][]any{}
-	iter := Transform[int]([]int{1, 2, 3, 4}).
+	iter := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(
 			Split(func(in int) (evenOdd, error) {
 				if in%2 == 0 {
@@ -338,7 +338,7 @@ func TestSplit_Success(t *testing.T) {
 				}
 				return odd, nil
 			})).
-		AsRange(expectsError(t, false))
+		AsRange()
 
 	for item := range iter {
 		i := item.(branch)
@@ -353,7 +353,7 @@ func TestSplit_Success(t *testing.T) {
 
 func TestSplit_Failure(t *testing.T) {
 	actual := map[uint8][]any{}
-	iter := Transform[int]([]int{1, 2, 3, 4}).
+	iter := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(
 			Split(func(in int) (evenOdd, error) {
 				if in == 4 {
@@ -364,7 +364,7 @@ func TestSplit_Failure(t *testing.T) {
 				}
 				return odd, nil
 			})).
-		AsRange(expectsError(t, true))
+		AsRange()
 
 	for item := range iter {
 		i := item.(branch)
@@ -420,9 +420,9 @@ func TestMerge_Success(t *testing.T) {
 		{key: uint8(even), T: reflect.ValueOf(2), value: 2},
 		{key: uint8(odd), T: reflect.ValueOf(3), value: 3},
 		{key: uint8(even), T: reflect.ValueOf(4), value: 4},
-	}).
+	}, WithErrorHandler(expectsError(t, false))).
 		WithSteps(Merge()).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.EqualValues(t, []any{1, 2, 3, 4}, actual)
 }
@@ -474,14 +474,14 @@ func TestWithBranches_Success(t *testing.T) {
 	})
 
 	testLogWriter := testLogWriter{}
-	actual := Transform[int]([]int{1, 2, 3, 4}, WithLogWriter(&testLogWriter)).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithLogWriter(&testLogWriter), WithErrorHandler(expectsError(t, false))).
 		WithSteps(split,
 			WithBranches[int](
 				Steps(addOne),
 				Steps(Log("test"), multiplyByTwo),
 			),
 			Merge()).
-		AsSlice(expectsError(t, false))
+		AsSlice()
 
 	assert.EqualValues(t, []any{2, 3, 6, 5}, actual)
 	assert.True(t, bytes.HasPrefix(testLogWriter.output, []byte("test")))
@@ -501,14 +501,14 @@ func TestWithBranches_Failure(t *testing.T) {
 		return in * 2, nil
 	})
 
-	actual := Transform[int]([]int{1, 2, 3, 4}).
+	actual := Transform[int]([]int{1, 2, 3, 4}, WithErrorHandler(expectsError(t, true))).
 		WithSteps(split,
 			WithBranches[int](
 				Steps(addOne),
 				Steps(multiplyByTwo),
 			),
 			Merge()).
-		AsSlice(expectsError(t, true))
+		AsSlice()
 
 	assert.EqualValues(t, []any{2, 3, 6}, actual)
 }

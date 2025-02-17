@@ -14,7 +14,9 @@ func TestTransformChanAsRange(t *testing.T) {
 	closeCh := make(chan struct{}, 1)
 	inCh := make(chan string, 5)
 
-	r := s.Transform[string](inCh).
+	r := s.Transform[string](inCh, s.WithErrorHandler(func(err error) {
+		require.NoError(t, err)
+	})).
 		With(s.Steps(
 			s.Map(func(i string) (int, error) {
 				return strconv.Atoi(i)
@@ -26,9 +28,7 @@ func TestTransformChanAsRange(t *testing.T) {
 			s.Map(func(i int) (string, error) {
 				return "_" + strconv.Itoa(i*2), nil
 			}),
-		)).AsRange(func(err error) {
-		require.NoError(t, err)
-	})
+		)).AsRange()
 
 	go func(in chan string) {
 		in <- "1"

@@ -50,8 +50,9 @@ type (
 	SkipFirstArgValidation struct{}
 
 	TransformerOptions struct {
-		Name      string
-		LogWriter io.Writer
+		Name         string
+		LogWriter    io.Writer
+		ErrorHandler func(error)
 	}
 )
 

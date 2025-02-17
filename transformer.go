@@ -43,12 +43,23 @@ func WithLogWriter(writer io.Writer) func(*TransformerOptions) {
 	}
 }
 
+func WithErrorHandler(handler func(error)) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.ErrorHandler = handler
+	}
+}
+
 func Transform[T any, IT inputType[T]](in IT, options ...func(*TransformerOptions)) input[T, IT] {
 	opts := TransformerOptions{
 		LogWriter: os.Stdout,
 	}
 	for _, withOption := range options {
 		withOption(&opts)
+	}
+	if opts.ErrorHandler == nil {
+		opts.ErrorHandler = func(err error) {
+			fmt.Fprintln(opts.LogWriter, "error occured:", err)
+		}
 	}
 	return input[T, IT]{in, opts}
 }
@@ -124,10 +135,4 @@ func (s *StepsBranch) Validate() error {
 	}
 
 	return s.Error
-}
-
-func (s stepsTransformer[T, IT]) emptyErrorHandler() func(error) {
-	return func(err error) {
-		fmt.Fprintln(s.options.LogWriter, "error occured:", err)
-	}
 }
