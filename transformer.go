@@ -1,8 +1,8 @@
 package steps
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"os"
 	"reflect"
 )
@@ -31,37 +31,13 @@ type (
 	}
 )
 
-func WithName(name string) func(*TransformerOptions) {
-	return func(opts *TransformerOptions) {
-		opts.Name = name
-	}
-}
-
-func WithLogWriter(writer io.Writer) func(*TransformerOptions) {
-	return func(opts *TransformerOptions) {
-		opts.LogWriter = writer
-	}
-}
-
-func WithErrorHandler(handler func(error)) func(*TransformerOptions) {
-	return func(opts *TransformerOptions) {
-		opts.ErrorHandler = handler
-	}
+func TransformFn[T any, IT inputType[T]](in func(TransformerOptions) IT, options ...func(*TransformerOptions)) input[T, IT] {
+	input := in(buildOpts(options...))
+	return Transform[T](input, options...)
 }
 
 func Transform[T any, IT inputType[T]](in IT, options ...func(*TransformerOptions)) input[T, IT] {
-	opts := TransformerOptions{
-		LogWriter: os.Stdout,
-	}
-	for _, withOption := range options {
-		withOption(&opts)
-	}
-	if opts.ErrorHandler == nil {
-		opts.ErrorHandler = func(err error) {
-			fmt.Fprintln(opts.LogWriter, "error occured:", err)
-		}
-	}
-	return input[T, IT]{in, opts}
+	return input[T, IT]{in, buildOpts(options...)}
 }
 
 func Steps(s ...StepWrapper) StepsBranch {
@@ -135,4 +111,25 @@ func (s *StepsBranch) Validate() error {
 	}
 
 	return s.Error
+}
+
+func buildOpts(options ...func(*TransformerOptions)) TransformerOptions {
+	opts := TransformerOptions{
+		Ctx:       context.Background(),
+		LogWriter: os.Stdout,
+	}
+	for _, withOption := range options {
+		withOption(&opts)
+	}
+	if opts.ErrorHandler == nil {
+		opts.ErrorHandler = func(err error) {
+			fmt.Fprintln(opts.LogWriter, "error occured:", err)
+		}
+	}
+	if opts.PanicHandler == nil {
+		opts.PanicHandler = func(err error) {
+			panic(err)
+		}
+	}
+	return opts
 }

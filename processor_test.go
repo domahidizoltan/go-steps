@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -164,9 +165,14 @@ func TestProcess(t *testing.T) {
 			name:  "step_returns_error",
 			input: 2,
 			err:   errors.New("map error"),
+		}, {
+			name:  "process_canceled",
+			input: 1,
+			err:   context.Canceled,
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
 			var processedValue *int
 			yield := func(in any) bool {
 				processedValue = ptr(in.(int))
@@ -177,8 +183,15 @@ func TestProcess(t *testing.T) {
 			})
 			trn := &transformer{
 				steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
+				options: TransformerOptions{
+					Ctx: ctx,
+				},
 			}
 
+			_ = cancel
+			if sc.name == "process_canceled" {
+				cancel()
+			}
 			skipped, _, err := process(sc.input, yield, trn, false)
 
 			assert.Equal(t, sc.skipped, skipped)
@@ -257,9 +270,14 @@ func TestProcessIndexed(t *testing.T) {
 			name:  "step_returns_error",
 			input: 2,
 			err:   errors.New("map error"),
+		}, {
+			name:  "process_canceled",
+			input: 1,
+			err:   context.Canceled,
 		},
 	} {
 		t.Run(sc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
 			var processedKey *string
 			var processedValue *int
 			yield := func(idx, in any) bool {
@@ -272,8 +290,15 @@ func TestProcessIndexed(t *testing.T) {
 			})
 			trn := &transformer{
 				steps: []StepFn{filterFn.StepFn, mapFn.StepFn},
+				options: TransformerOptions{
+					Ctx: ctx,
+				},
 			}
 
+			_ = cancel
+			if sc.name == "process_canceled" {
+				cancel()
+			}
 			skipped, _, err := processIndexed(sc.name, sc.input, yield, trn, false)
 
 			assert.Equal(t, sc.skipped, skipped)

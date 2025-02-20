@@ -107,16 +107,24 @@ func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool)
 	var skipped bool
 	var out StepOutput
 	for _, fn := range transformer.steps {
-		out = fn(in)
-		if out.Skip || out.Error != nil {
-			skipped = true
-			break
-		}
+		select {
+		case <-transformer.options.Ctx.Done():
+			out = StepOutput{
+				Error: transformer.options.Ctx.Err(),
+			}
+			return out, false
+		default:
+			out = fn(in)
+			if out.Skip || out.Error != nil {
+				skipped = true
+				break
+			}
 
-		in = StepInput{
-			Args:               out.Args,
-			ArgsLen:            out.ArgsLen,
-			TransformerOptions: transformer.options,
+			in = StepInput{
+				Args:               out.Args,
+				ArgsLen:            out.ArgsLen,
+				TransformerOptions: transformer.options,
+			}
 		}
 	}
 

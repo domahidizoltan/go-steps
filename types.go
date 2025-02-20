@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"errors"
 	"io"
 	"reflect"
@@ -53,6 +54,9 @@ type (
 		Name         string
 		LogWriter    io.Writer
 		ErrorHandler func(error)
+		PanicHandler func(error)
+		Ctx          context.Context
+		ChanSize     uint
 	}
 )
 
@@ -63,3 +67,39 @@ var (
 	ErrInvalidAggregator       = errors.New("invalid aggregator")
 	ErrInvalidStep             = errors.New("invalid step")
 )
+
+func WithName(name string) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.Name = name
+	}
+}
+
+func WithLogWriter(writer io.Writer) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.LogWriter = writer
+	}
+}
+
+func WithErrorHandler(handler func(error)) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.ErrorHandler = handler
+	}
+}
+
+func WithPanicHandler(handler func(error)) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.PanicHandler = handler
+	}
+}
+
+func WithContext(ctx context.Context) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.Ctx = ctx
+	}
+}
+
+func WithChanSize(size uint) func(*TransformerOptions) {
+	return func(opts *TransformerOptions) {
+		opts.ChanSize = size
+	}
+}
