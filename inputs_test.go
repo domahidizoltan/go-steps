@@ -74,11 +74,12 @@ func TestFromCsv(t *testing.T) {
 
 func TestStreamingCsv(t *testing.T) {
 	for _, sc := range []struct {
-		name        string
-		input       io.Reader
-		expected    []testPerson
-		expectedErr string
-		cancelled   bool
+		name           string
+		input          io.Reader
+		withoutHeaders bool
+		expected       []testPerson
+		expectedErr    string
+		cancelled      bool
 	}{
 		{
 			name: "parse_csv",
@@ -87,6 +88,17 @@ func TestStreamingCsv(t *testing.T) {
 				1,John Doe,2006-01-02T15:04:05+07:00,11
 				2,Jane Doe,1992-05-23T08:01:00Z,22
 				3,Doe,,33`), 16),
+			expected: []testPerson{
+				{Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+				{Name: "Jane Doe", Dob: mustParseTime("1992-05-23T08:01:00Z"), Code: 22},
+				{Name: "Doe", Code: 33},
+			},
+		}, {
+			name:           "parse_csv_without_headers",
+			withoutHeaders: true,
+			input: bufio.NewReaderSize(strings.NewReader(`John Doe,2006-01-02T15:04:05+07:00,11
+Jane Doe,1992-05-23T08:01:00Z,22
+Doe,,33`), 16),
 			expected: []testPerson{
 				{Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
 				{Name: "Jane Doe", Dob: mustParseTime("1992-05-23T08:01:00Z"), Code: 22},
@@ -136,7 +148,7 @@ func TestStreamingCsv(t *testing.T) {
 			}
 
 			actual := []testPerson{}
-			for res := range FromStreamingCsv[testPerson](sc.input)(opts) {
+			for res := range FromStreamingCsv[testPerson](sc.input, sc.withoutHeaders)(opts) {
 				if sc.cancelled {
 					cancel()
 				}
@@ -210,18 +222,29 @@ func TestStreamingJson(t *testing.T) {
 				{Name: "Doe", Code: 33},
 			},
 		}, {
-			// TODO should not stop
-			// 	name: "parse_error",
-			// 	input: strings.NewReader(`
-			// 			{"id":1,"name":"John Doe","dob":"2006-01-02T15:04:05+07:00","code":11}
-			// 			{"xxxx"}
-			// 			{"id":3,"name":"Doe","code":33}`),
-			// 	expected: []testPerson{
-			// 		{Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
-			// 		{Name: "Doe", Code: 33},
-			// 	},
-			// 	expectedErr: "record on line 4: wrong number of fields",
-			// }, {
+			name: "parse_json_in_brackets",
+			input: bufio.NewReaderSize(strings.NewReader(`[
+					{"id":1,"name":"John Doe","dob":"2006-01-02T15:04:05+07:00","code":11}
+					{"id":2,"name":"Jane Doe","dob":"1992-05-23T08:01:00Z","code":22}
+					{"id":3,"name":"Doe","code":33}
+				]`), 16),
+			expected: []testPerson{
+				{Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+				{Name: "Jane Doe", Dob: mustParseTime("1992-05-23T08:01:00Z"), Code: 22},
+				{Name: "Doe", Code: 33},
+			},
+		}, {
+			name: "parse_error",
+			input: strings.NewReader(`
+					{"id":1,"name":"John Doe","dob":"2006-01-02T15:04:05+07:00","code":11}
+					{"xxxx"}
+					{"id":3,"name":"Doe","code":33}`),
+			expected: []testPerson{
+				{Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+				{Name: "Doe", Code: 33},
+			},
+			expectedErr: "invalid character '}' after object key",
+		}, {
 			name: "canceled",
 			input: strings.NewReader(`
 					{"id":1,"name":"John Doe","dob":"2006-01-02T15:04:05+07:00","code":11}

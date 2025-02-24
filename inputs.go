@@ -1,10 +1,12 @@
 package steps
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/jszwec/csvutil"
 )
@@ -25,10 +27,23 @@ func FromCsv[T any](reader io.Reader) func(TransformerOptions) []T {
 	}
 }
 
-func FromStreamingCsv[T any](reader io.Reader) func(TransformerOptions) chan T {
+func FromStreamingCsv[T any](reader io.Reader, withoutHeaders bool) func(TransformerOptions) chan T {
 	return func(opts TransformerOptions) chan T {
 		resCh := make(chan T, opts.ChanSize)
-		dec, err := csvutil.NewDecoder(csv.NewReader(reader))
+
+		header := []string{}
+		if withoutHeaders {
+			var t T
+			var err error
+			header, err = csvutil.Header(t, "csv")
+			if err != nil {
+				close(resCh)
+				opts.PanicHandler(err)
+				return resCh
+			}
+		}
+
+		dec, err := csvutil.NewDecoder(csv.NewReader(reader), header...)
 		if err != nil && err != io.EOF {
 			close(resCh)
 			opts.PanicHandler(err)
@@ -79,9 +94,10 @@ func FromJson[T any](reader io.Reader) func(TransformerOptions) []T {
 func FromStreamingJson[T any](reader io.Reader) func(TransformerOptions) chan T {
 	return func(opts TransformerOptions) chan T {
 		resCh := make(chan T, opts.ChanSize)
-		dec := json.NewDecoder(reader)
+		scanner := bufio.NewScanner(reader)
+		scanner.Split(bufio.ScanLines)
 
-		go func(dec *json.Decoder, resCh chan T) {
+		go func(scanner *bufio.Scanner, resCh chan T) {
 			defer close(resCh)
 			for {
 				select {
@@ -89,18 +105,30 @@ func FromStreamingJson[T any](reader io.Reader) func(TransformerOptions) chan T 
 					opts.ErrorHandler(opts.Ctx.Err())
 					return
 				default:
-					var data T
-					if err := dec.Decode(&data); err != nil {
-						if err == io.EOF {
-							return
-						}
+					if !scanner.Scan() {
+						return
+					}
+					if err := scanner.Err(); err != nil {
 						opts.PanicHandler(err)
 						continue
 					}
-					resCh <- data
+
+					line := scanner.Text()
+					switch strings.TrimSpace(line) {
+					case "", "[", "]":
+						continue
+					default:
+						var data T
+						if err := json.Unmarshal([]byte(line), &data); err != nil {
+							opts.PanicHandler(err)
+							continue
+						}
+						resCh <- data
+					}
+
 				}
 			}
-		}(dec, resCh)
+		}(scanner, resCh)
 
 		return resCh
 	}
