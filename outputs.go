@@ -1,7 +1,6 @@
 package steps
 
 import (
-	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -143,7 +142,18 @@ func (t stepsTransformer[T, IT]) AsSlice() []any {
 
 func (t stepsTransformer[T, IT]) AsCsv() string {
 	data := t.AsSlice()
-	res, err := csvutil.Marshal(data)
+	if len(data) == 0 {
+		return ""
+	}
+
+	dataType := reflect.Indirect(reflect.ValueOf(data[0])).Type()
+	typedSlice := reflect.MakeSlice(reflect.SliceOf(dataType), len(data), len(data))
+
+	for i, v := range data {
+		typedSlice.Index(i).Set(reflect.ValueOf(v))
+	}
+
+	res, err := csvutil.Marshal(typedSlice.Interface())
 	if err != nil {
 		handleErrWithTrName(t, err, t.options.ErrorHandler)
 	}
@@ -151,8 +161,7 @@ func (t stepsTransformer[T, IT]) AsCsv() string {
 }
 
 func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
+	w := csv.NewWriter(writer)
 	enc := csvutil.NewEncoder(w)
 
 	for record := range t.AsRange() {
@@ -160,6 +169,11 @@ func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
 		if err != nil {
 			handleErrWithTrName(t, err, t.options.ErrorHandler)
 		}
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		handleErrWithTrName(t, err, t.options.ErrorHandler)
 	}
 }
 

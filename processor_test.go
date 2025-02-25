@@ -233,6 +233,7 @@ func TestProcessAndAggregate(t *testing.T) {
 			})
 
 			trn := &transformer{
+				options:    TransformerOptions{Ctx: context.Background()},
 				steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
 				aggregator: groupEven.ReducerFn,
 			}
@@ -345,6 +346,7 @@ func TestProcessIndexedAndAggregate(t *testing.T) {
 			})
 
 			trn := &transformer{
+				options:    TransformerOptions{Ctx: context.Background()},
 				steps:      []StepFn{filterFn.StepFn, mapFn.StepFn},
 				aggregator: groupEven.ReducerFn,
 			}

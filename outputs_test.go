@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -16,7 +18,7 @@ var (
 	errorFn        = Map(func(in int) (int, error) {
 		return 0, errStep
 	})
-	opts = TransformerOptions{Name: tfName}
+	opts = TransformerOptions{Name: tfName, Ctx: context.Background()}
 )
 
 func TestAsRange_WithSlice(t *testing.T) {
@@ -614,6 +616,65 @@ func TestAsSlice_WithChan(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAsCsv(t *testing.T) {
+	transformer := stepsTransformer[testPerson, []testPerson]{
+		input: []testPerson{
+			{Id: 1, Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+			{Id: 2, Name: "Jane Doe", Dob: nil, Code: 22},
+		},
+	}
+	expected := `name,dob,code
+John Doe,2006-01-02T15:04:05+07:00,11
+Jane Doe,,22
+`
+	res := transformer.AsCsv()
+	assert.Equal(t, expected, res)
+}
+
+func TestToStreamingCsv(t *testing.T) {
+	transformer := stepsTransformer[testPerson, []testPerson]{
+		input: []testPerson{
+			{Id: 1, Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+			{Id: 2, Name: "Jane Doe", Dob: nil, Code: 22},
+		},
+	}
+	expected := `name,dob,code
+John Doe,2006-01-02T15:04:05+07:00,11
+Jane Doe,,22
+`
+	var buf bytes.Buffer
+	transformer.ToStreamingCsv(&buf)
+	assert.Equal(t, expected, buf.String())
+}
+
+func TestAsJson(t *testing.T) {
+	transformer := stepsTransformer[testPerson, []testPerson]{
+		input: []testPerson{
+			{Id: 1, Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+			{Id: 2, Name: "Jane Doe", Dob: nil, Code: 22},
+		},
+	}
+	expected := `[{"name":"John Doe","dob":"2006-01-02T15:04:05+07:00","code":11},{"name":"Jane Doe","code":22}]`
+
+	res := transformer.AsJson()
+	assert.Equal(t, expected, res)
+}
+
+func TestToStreamingJson(t *testing.T) {
+	transformer := stepsTransformer[testPerson, []testPerson]{
+		input: []testPerson{
+			{Id: 1, Name: "John Doe", Dob: mustParseTime("2006-01-02T15:04:05+07:00"), Code: 11},
+			{Id: 2, Name: "Jane Doe", Dob: nil, Code: 22},
+		},
+	}
+	expected := `{"name":"John Doe","dob":"2006-01-02T15:04:05+07:00","code":11}
+{"name":"Jane Doe","code":22}
+`
+	var buf bytes.Buffer
+	transformer.ToStreamingJson(&buf)
+	assert.Equal(t, expected, buf.String())
 }
 
 func optsWithErrHandler(errHandler func(error)) TransformerOptions {
