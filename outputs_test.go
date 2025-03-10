@@ -411,45 +411,50 @@ func TestAsIndexedRange_WithChan_WithoutErrorHandler(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-//TODO + chan
-// func TestAsMultiMap_WithSlice(t *testing.T) {
-// 	type scenario struct {
-// 		name         string
-// 		errorHandler func(error)
-// 		reducer      ReducerFn
-// 	}
-//
-// 	for _, sc := range []scenario{
-// 		// {
-// 		// 	name: "error_handler_passed",
-// 		// 	errorHandler: func(err error) {
-// 		// 		assert.Equal(t, errStep, err)
-// 		// 	},
-// 		// 	steps: []StepFn{errorFn.StepFn},
-// 		// },
-// 		{
-// 			name: "input_processed",
-// 			reducer: GroupBy(func(in int) (bool, int, error) {
-// 				return in%2 == 0, in, nil
-// 			}).ReducerFn,
-// 		},
-// 	} {
-// 		t.Run(sc.name, func(t *testing.T) {
-// 			transformer := stepsTransformer[int, []int]{
-// 				input: []int{1, 2, 3, 4, 5},
-// 				transformer: transformer{
-// 					aggregator: sc.reducer,
-// 				},
-// 			}
-//
-// 			res := transformer.AsMultiMap(sc.errorHandler)
-// 			if sc.errorHandler == nil {
-// 				assert.Equal(t, map[any][]any{1: {2}, 3: {4}}, res)
-// 			}
-// 		})
-// 	}
-// }
-//
+func TestAsMultiMap_WithSlice(t *testing.T) {
+	groupBy := GroupBy(func(in int) (bool, int, error) {
+		return in%2 == 0, in, nil
+	}).ReducerFn
+
+	transformer := stepsTransformer[int, []int]{
+		input: []int{1, 2, 3, 4, 5},
+		transformer: transformer{
+			options: optsWithErrHandler(func(err error) {
+				assert.Fail(t, "received error", err.Error())
+			}),
+			aggregator: groupBy,
+		},
+	}
+
+	res := transformer.AsMultiMap()
+	assert.Equal(t, map[any][]any{true: {2, 4}, false: {1, 3, 5}}, res)
+}
+
+func TestAsMultiMap_WithChan(t *testing.T) {
+	groupBy := GroupBy(func(in int) (bool, int, error) {
+		return in%2 == 0, in, nil
+	}).ReducerFn
+	inputCh := make(chan int, 10)
+
+	transformer := stepsTransformer[int, chan int]{
+		input: inputCh,
+		transformer: transformer{
+			options: optsWithErrHandler(func(err error) {
+				assert.Fail(t, "received error", err.Error())
+			}),
+			aggregator: groupBy,
+		},
+	}
+	go func(inputCh chan int) {
+		for _, v := range []int{1, 2, 3, 4, 5} {
+			inputCh <- v
+		}
+		close(inputCh)
+	}(inputCh)
+
+	res := transformer.AsMultiMap()
+	assert.Equal(t, map[any][]any{true: {2, 4}, false: {1, 3, 5}}, res)
+}
 
 func TestAsMap_WithSlice(t *testing.T) {
 	type scenario struct {

@@ -29,15 +29,27 @@ func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 		var err error
 		switch in := any(t.input).(type) {
 		case chan T:
-			// TODO check if closed for lastItem
-			for v := range in {
-				_, terminated, err = process(v, yield, &t.transformer, false)
-				if terminated || err != nil {
-					if err != nil {
-						handleErrWithTrName(t, err, t.options.ErrorHandler)
-					}
+			idx := -1
+			var val any
+			for {
+				v, isOpen := <-in
+				if !isOpen && idx < 0 {
 					break
 				}
+				if idx >= 0 {
+					_, terminated, err = process(val, yield, &t.transformer, !isOpen)
+					if terminated || err != nil {
+						if err != nil {
+							handleErrWithTrName(t, err, t.options.ErrorHandler)
+						}
+						break
+					}
+				}
+				if !isOpen {
+					break
+				}
+				val = v
+				idx++
 			}
 		case []T:
 			lastIdx := len(in) - 1
@@ -71,15 +83,26 @@ func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 		var err error
 		switch in := any(t.input).(type) {
 		case chan T:
-			idx := 0
-			for v := range in {
-				_, terminated, err = processIndexed(idx, v, yield, &t.transformer, false)
-				if terminated || err != nil {
-					if err != nil {
-						handleErrWithTrName(t, err, t.options.ErrorHandler)
-					}
+			idx := -1
+			var val any
+			for {
+				v, isOpen := <-in
+				if !isOpen && idx < 0 {
 					break
 				}
+				if idx >= 0 {
+					_, terminated, err = processIndexed(idx, val, yield, &t.transformer, !isOpen)
+					if terminated || err != nil {
+						if err != nil {
+							handleErrWithTrName(t, err, t.options.ErrorHandler)
+						}
+						break
+					}
+				}
+				if !isOpen {
+					break
+				}
+				val = v
 				idx++
 			}
 		case []T:

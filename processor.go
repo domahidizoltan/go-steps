@@ -106,6 +106,7 @@ func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool)
 
 	var skipped bool
 	var out StepOutput
+iterSteps:
 	for _, fn := range transformer.steps {
 		select {
 		case <-transformer.options.Ctx.Done():
@@ -117,7 +118,7 @@ func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool)
 			out = fn(in)
 			if out.Skip || out.Error != nil {
 				skipped = true
-				break
+				break iterSteps
 			}
 
 			in = StepInput{
