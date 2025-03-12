@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Map transforms a single input into a single output
 func Map[IN0, OUT0 any](fn func(in IN0) (OUT0, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Map",
@@ -45,6 +46,7 @@ func simpleFilterValidation[IN0 any](prevStepOut ArgTypes) (ArgTypes, error) {
 	return ArgTypes{reflect.TypeFor[IN0]()}, nil
 }
 
+// Filter skips inputs that do not pass the filter
 func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Filter",
@@ -61,6 +63,7 @@ func Filter[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	}
 }
 
+// Take is processing the first N inputs
 func Take[IN0 any](count uint64) StepWrapper {
 	var counter uint64
 	return StepWrapper{
@@ -78,6 +81,7 @@ func Take[IN0 any](count uint64) StepWrapper {
 	}
 }
 
+// TakeWhile processes inputs while the filter returns true
 func TakeWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	var skip bool
 	return StepWrapper{
@@ -98,6 +102,7 @@ func TakeWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	}
 }
 
+// Skip is skipping the first N inputs
 func Skip[IN0 any](count uint64) StepWrapper {
 	var counter uint64
 	return StepWrapper{
@@ -115,6 +120,7 @@ func Skip[IN0 any](count uint64) StepWrapper {
 	}
 }
 
+// SkipWhile skips processing inputs while the filter returns true
 func SkipWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	skip := true
 	return StepWrapper{
@@ -135,6 +141,7 @@ func SkipWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 	}
 }
 
+// Do runs a function on each input item
 func Do[IN0 any](fn func(in IN0) error) StepWrapper {
 	return StepWrapper{
 		Name: "Do",
@@ -150,6 +157,7 @@ func Do[IN0 any](fn func(in IN0) error) StepWrapper {
 	}
 }
 
+// Log logs debug informations between steps
 func Log(prefix ...string) StepWrapper {
 	return StepWrapper{
 		Name: "Log",
@@ -198,6 +206,8 @@ type branch struct {
 
 var branchType = reflect.TypeFor[branch]()
 
+// Split defines how to split inputs into transformation branches
+// The function returns the number of the branch where the input will be sent
 func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) StepWrapper {
 	return StepWrapper{
 		Name: "Split",
@@ -225,7 +235,8 @@ func Split[IN0 any, OUT0 ~uint8](fn func(in IN0) (OUT0, error)) StepWrapper {
 	}
 }
 
-// TODO document that this is not parallel processing, because it keeps ordering
+// WithBranches applies a set of steps to each branch.
+// This is not parallel processing. The items keeps the order even if one branch could possibly process faster.
 func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 	return StepWrapper{
 		Name: "WithBranches",
@@ -275,6 +286,7 @@ func WithBranches[IN0 any](stepsBranches ...StepsBranch) StepWrapper {
 	}
 }
 
+// Merge merges back the transformation branches
 func Merge() StepWrapper {
 	return StepWrapper{
 		Name: "Merge",

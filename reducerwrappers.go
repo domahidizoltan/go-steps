@@ -6,6 +6,8 @@ import (
 	"reflect"
 )
 
+// GroupBy is an aggregator grouping inputs by comparable values.
+// The grouped values are in a slice.
 func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, error)) ReducerWrapper {
 	acc := map[OUT0][]OUT1{}
 	return ReducerWrapper{
@@ -34,6 +36,7 @@ func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, er
 	}
 }
 
+// Fold reduces a series of inputs into a single value using a custom initial value.
 func Fold[IN0 any](initValue IN0, reduceFn func(in1, in2 IN0) (IN0, error)) ReducerWrapper {
 	prevValue := initValue
 	return ReducerWrapper{
@@ -63,6 +66,7 @@ func Fold[IN0 any](initValue IN0, reduceFn func(in1, in2 IN0) (IN0, error)) Redu
 	}
 }
 
+// Reduce reduces a series of inputs into a single value using a zero value as initial value.
 func Reduce[IN0 any](fn func(in1, in2 IN0) (IN0, error)) ReducerWrapper {
 	var initValue IN0
 	fold := Fold(initValue, fn)
@@ -76,6 +80,7 @@ type number interface {
 		float32 | float64
 }
 
+// Sum returns the total of all number inputs
 func Sum[IN0 number]() ReducerWrapper {
 	sumFn := Reduce(func(in1, in2 IN0) (IN0, error) {
 		return in1 + in2, nil
@@ -84,6 +89,7 @@ func Sum[IN0 number]() ReducerWrapper {
 	return sumFn
 }
 
+// Max returns the largest number input
 func Max[IN0 number]() ReducerWrapper {
 	var minValue any
 	switch reflect.TypeFor[IN0]().Kind() {
@@ -122,6 +128,7 @@ func Max[IN0 number]() ReducerWrapper {
 	return maxFn
 }
 
+// Min returns the smallest number input
 func Min[IN0 number]() ReducerWrapper {
 	var maxValue any
 	switch reflect.TypeFor[IN0]().Kind() {
@@ -161,6 +168,7 @@ func Min[IN0 number]() ReducerWrapper {
 	return minFn
 }
 
+// Avg returns the average of all float64 inputs
 func Avg() ReducerWrapper {
 	var counter, avg, sum float64
 

@@ -11,6 +11,7 @@ import (
 	"github.com/jszwec/csvutil"
 )
 
+// FromCsv translates a CSV into a slice input
 func FromCsv[T any](reader io.Reader) func(TransformerOptions) []T {
 	return func(opts TransformerOptions) []T {
 		data, err := io.ReadAll(reader)
@@ -27,6 +28,7 @@ func FromCsv[T any](reader io.Reader) func(TransformerOptions) []T {
 	}
 }
 
+// FromStreamingCsv translates a CSV into a channel input
 func FromStreamingCsv[T any](reader io.Reader, withoutHeaders bool) func(TransformerOptions) chan T {
 	return func(opts TransformerOptions) chan T {
 		resCh := make(chan T, opts.ChanSize)
@@ -75,6 +77,7 @@ func FromStreamingCsv[T any](reader io.Reader, withoutHeaders bool) func(Transfo
 	}
 }
 
+// FromJson translates a JSON into a slice input
 func FromJson[T any](reader io.Reader) func(TransformerOptions) []T {
 	return func(opts TransformerOptions) []T {
 		data, err := io.ReadAll(reader)
@@ -91,6 +94,7 @@ func FromJson[T any](reader io.Reader) func(TransformerOptions) []T {
 	}
 }
 
+// FromStreamingJson translates a JSON into a channel input
 func FromStreamingJson[T any](reader io.Reader) func(TransformerOptions) chan T {
 	return func(opts TransformerOptions) chan T {
 		resCh := make(chan T, opts.ChanSize)
@@ -134,6 +138,7 @@ func FromStreamingJson[T any](reader io.Reader) func(TransformerOptions) chan T 
 	}
 }
 
+// File is a helper function to define the file input for CSV or JSON inputs
 func File(filePath string) io.Reader {
 	f, err := os.Open(filePath)
 	if err != nil {

@@ -1,9 +1,6 @@
 package steps
 
 import (
-	"context"
-	"fmt"
-	"os"
 	"reflect"
 )
 
@@ -31,25 +28,32 @@ type (
 	}
 )
 
+// TransformFn is an alternative for [Transform] where the input is a function.
+// This could be used to implement new input sources like files or database connections.
 func TransformFn[T any, IT inputType[T]](in func(TransformerOptions) IT, options ...func(*TransformerOptions)) input[T, IT] {
 	input := in(buildOpts(options...))
 	return Transform[T](input, options...)
 }
 
+// Transform creates a builder for the transforation chain.
+// It takes the input data (slice or chan) and the transformer options.
 func Transform[T any, IT inputType[T]](in IT, options ...func(*TransformerOptions)) input[T, IT] {
 	return input[T, IT]{in, buildOpts(options...)}
 }
 
+// Steps creates the steps of a transformation chain.
 func Steps(s ...StepWrapper) StepsBranch {
 	return StepsBranch{
 		StepWrappers: s,
 	}
 }
 
+// WithSteps is a shortcut to With(Steps(...))
 func (i input[T, IT]) WithSteps(steps ...StepWrapper) stepsTransformer[T, IT] {
 	return i.With(Steps(steps...))
 }
 
+// With adds the steps to the existing transformation chain.
 func (i input[T, IT]) With(steps StepsBranch) stepsTransformer[T, IT] {
 	t := stepsTransformer[T, IT]{
 		transformer: transformer{
@@ -69,12 +73,14 @@ func (i input[T, IT]) With(steps StepsBranch) stepsTransformer[T, IT] {
 	return t
 }
 
+// Aggregate adds a reducer to the transformer
 func Aggregate(fn ReducerWrapper) StepsBranch {
 	return StepsBranch{
 		AggregatorWrapper: &fn,
 	}
 }
 
+// Aggregate ads a reducer to the transformer with steps previously defined
 func (s StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch {
 	return StepsBranch{
 		StepWrappers:      s.StepWrappers,
@@ -82,6 +88,11 @@ func (s StepsBranch) Aggregate(fn ReducerWrapper) StepsBranch {
 	}
 }
 
+// Validate is runs the validation for the steps in the transformation chain.
+// One of the main purpose of the validator is to reduce the possible runtime errors caused by reflection usage.
+// The validator tries to check that the output of the steps are matching the inputs of the next steps.
+// It could be triggered explicitly to validate the chain before running it,
+// but it will also run automatically (if not ran before) when the chain is processing it's first item.
 func (s *StepsBranch) Validate() error {
 	if s.Error != nil {
 		s.StepWrappers = nil
@@ -111,25 +122,4 @@ func (s *StepsBranch) Validate() error {
 	}
 
 	return s.Error
-}
-
-func buildOpts(options ...func(*TransformerOptions)) TransformerOptions {
-	opts := TransformerOptions{
-		Ctx:       context.Background(),
-		LogWriter: os.Stdout,
-	}
-	for _, withOption := range options {
-		withOption(&opts)
-	}
-	if opts.ErrorHandler == nil {
-		opts.ErrorHandler = func(err error) {
-			fmt.Fprintln(opts.LogWriter, "error occured:", err)
-		}
-	}
-	if opts.PanicHandler == nil {
-		opts.PanicHandler = func(err error) {
-			panic(err)
-		}
-	}
-	return opts
 }

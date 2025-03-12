@@ -18,6 +18,7 @@ func handleErrWithTrName[T any, IT inputType[T]](t stepsTransformer[T, IT], err 
 	errorHandler(err)
 }
 
+// AsRange returns the transformer output as a single value iterator ready to be used by the range keyword
 func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 	return func(yield func(any) bool) {
 		if t.error != nil {
@@ -68,10 +69,12 @@ func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 	}
 }
 
+// AsKeyValueRange is an alias for AsIndexedRange
 func (t stepsTransformer[T, IT]) AsKeyValueRange() iter.Seq2[any, any] {
 	return t.AsIndexedRange()
 }
 
+// AsIndexedRange returns the transformer output as a key-value iterator ready to be used by the range keyword
 func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 	return func(yield func(any, any) bool) {
 		if t.error != nil {
@@ -122,6 +125,7 @@ func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 	}
 }
 
+// AsMultiMap collects the transformer output having a [GroupBy] aggregator.
 func (t stepsTransformer[T, IT]) AsMultiMap() map[any][]any {
 	var acc any
 	for _, v := range t.AsIndexedRange() {
@@ -146,6 +150,7 @@ func (t stepsTransformer[T, IT]) AsMultiMap() map[any][]any {
 	return res
 }
 
+// AsMap collects the transformer output into a map
 func (t stepsTransformer[T, IT]) AsMap() map[any]any {
 	res := map[any]any{}
 	for k, v := range t.AsIndexedRange() {
@@ -154,6 +159,7 @@ func (t stepsTransformer[T, IT]) AsMap() map[any]any {
 	return res
 }
 
+// AsSlice collects the transformer output into a slice
 func (t stepsTransformer[T, IT]) AsSlice() []any {
 	var res []any
 	for v := range t.AsRange() {
@@ -163,6 +169,7 @@ func (t stepsTransformer[T, IT]) AsSlice() []any {
 	return res
 }
 
+// AsCsv collects the transformer output into a CSV string
 func (t stepsTransformer[T, IT]) AsCsv() string {
 	data := t.AsSlice()
 	if len(data) == 0 {
@@ -183,6 +190,7 @@ func (t stepsTransformer[T, IT]) AsCsv() string {
 	return string(res)
 }
 
+// ToStreamingCsv collects and writes the transformer output as a CSV
 func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
 	w := csv.NewWriter(writer)
 	enc := csvutil.NewEncoder(w)
@@ -200,6 +208,7 @@ func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
 	}
 }
 
+// AsJson collects the transformer output into a JSON string
 func (t stepsTransformer[T, IT]) AsJson() string {
 	data := t.AsSlice()
 	res, err := json.Marshal(data)
@@ -209,6 +218,7 @@ func (t stepsTransformer[T, IT]) AsJson() string {
 	return string(res)
 }
 
+// ToStreamingJson collects and writes the transformer output as a JSON
 func (t stepsTransformer[T, IT]) ToStreamingJson(writer io.Writer) {
 	enc := json.NewEncoder(writer)
 
