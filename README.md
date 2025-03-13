@@ -316,7 +316,7 @@ fmt.Println(res) //[{"id":1,"name":"John Doe","age":25,"department":"Engineering
 ```
 
 
-See the [samples](https://github.com/domahidizoltan/go-steps/test/samples_test.go) for more details
+See the [samples](https://github.com/domahidizoltan/go-steps/blob/master/test/samples_test.go) for more details
 
 For documentation open the godoc with `m=all` option:
 ```bash

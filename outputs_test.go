@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -686,4 +687,131 @@ func optsWithErrHandler(errHandler func(error)) TransformerOptions {
 	opts := opts
 	opts.ErrorHandler = errHandler
 	return opts
+}
+
+func Example_stepsTransformer_AsRange() {
+	res := []any{}
+	for i := range Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps().
+		AsRange() {
+		res = append(res, i)
+	}
+
+	fmt.Println(res)
+	// Output: [1 2 3 4 5]
+}
+
+func Example_stepsTransformer_AsKeyValueRange() {
+	res := ""
+	for k, v := range Transform[string]([]string{"h", "e", "l", "l", "o"}).
+		WithSteps().
+		AsKeyValueRange() {
+		res += fmt.Sprintf("%d:%s ", k, v)
+	}
+
+	fmt.Println(res)
+	// Output: 0:h 1:e 2:l 3:l 4:o
+}
+
+func Example_stepsTransformer_AsIndexedRange() {
+	fmt.Println("see AsKeyValueRange")
+	// Output: see AsKeyValueRange
+}
+
+func Example_stepsTransformer_AsMultiMap() {
+	fmt.Println("see GroupBy")
+	// Output: see GroupBy
+}
+
+func Example_stepsTransformer_AsMap() {
+	res := Transform[string]([]string{"h", "e", "l", "l", "o"}).
+		WithSteps().
+		AsMap()
+
+	fmt.Println(res)
+	// Output: map[0:h 1:e 2:l 3:l 4:o]
+}
+
+func Example_stepsTransformer_AsSlice() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps().
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [1 2 3 4 5]
+}
+
+func Example_stepsTransformer_AsCsv() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+
+	res := Transform[person]([]person{
+		{ID: 1, Name: "John Doe"},
+		{ID: 2, Name: "Jane Doe"},
+	}).
+		WithSteps().
+		AsCsv()
+
+	fmt.Println(res)
+	// Output: id,name
+	// 1,John Doe
+	// 2,Jane Doe
+}
+
+func Example_stepsTransformer_ToStreamingCsv() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+	var buf bytes.Buffer
+
+	Transform[person]([]person{
+		{ID: 1, Name: "John Doe"},
+		{ID: 2, Name: "Jane Doe"},
+	}).
+		WithSteps().
+		ToStreamingCsv(&buf)
+
+	fmt.Println(buf.String())
+	// Output: id,name
+	// 1,John Doe
+	// 2,Jane Doe
+}
+
+func Example_stepsTransformer_AsJson() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+
+	res := Transform[person]([]person{
+		{ID: 1, Name: "John Doe"},
+		{ID: 2, Name: "Jane Doe"},
+	}).
+		WithSteps().
+		AsJson()
+
+	fmt.Println(res)
+	// Output: [{"ID":1,"Name":"John Doe"},{"ID":2,"Name":"Jane Doe"}]
+}
+
+func Example_stepsTransformer_ToStreamingJson() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+	var buf bytes.Buffer
+
+	Transform[person]([]person{
+		{ID: 1, Name: "John Doe"},
+		{ID: 2, Name: "Jane Doe"},
+	}).
+		WithSteps().
+		ToStreamingJson(&buf)
+
+	fmt.Println(buf.String())
+	// Output: {"ID":1,"Name":"John Doe"}
+	// {"ID":2,"Name":"Jane Doe"}
 }

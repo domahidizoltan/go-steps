@@ -2,6 +2,7 @@ package steps
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"testing"
@@ -245,4 +246,87 @@ func TestAvg_Success(t *testing.T) {
 		AsSlice()
 
 	assert.Less(t, math.Abs(float64(-0.23)-actual[0].(float64)), float64EqualityThreshold)
+}
+
+func ExampleGroupBy() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		With(Aggregate(
+			GroupBy(func(in int) (uint8, int, error) {
+				return uint8(in % 2), in, nil
+			}),
+		)).
+		AsMultiMap()
+
+	fmt.Println(res)
+	// Output: map[0:[2 4] 1:[1 3 5]]
+}
+
+func ExampleFold() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		With(Aggregate(
+			Fold(10, func(in1, in2 int) (int, error) {
+				return in1 + in2, nil
+			}),
+		)).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [25]
+}
+
+func ExampleReduce() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		With(Aggregate(
+			Reduce(func(in1, in2 int) (int, error) {
+				return in1 + in2, nil
+			}),
+		)).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [15]
+}
+
+func ExampleSum() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		With(Aggregate(
+			Sum[int](),
+		)).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [15]
+}
+
+func ExampleMax() {
+	res := Transform[float64]([]float64{-1.1, -3.3, -2.2, -5.5, -4.4}).
+		With(Aggregate(
+			Max[float64](),
+		)).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [-1.1]
+}
+
+func ExampleMin() {
+	res := Transform[float64]([]float64{-1.1, -3.3, -2.2, -5.5, -4.4}).
+		With(Aggregate(
+			Min[float64](),
+		)).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [-5.5]
+}
+
+func ExampleAvg() {
+	res := Transform[float64]([]float64{-1.1, -2.1, -3.1, -4.1, -5.1}).
+		With(Aggregate(
+			Avg(),
+		)).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [-3.1]
 }

@@ -3,8 +3,10 @@ package steps
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -609,4 +611,147 @@ func expectsError(t *testing.T, expectsError bool) func(error) {
 		}
 		assert.NoError(t, err)
 	}
+}
+
+func ExampleMap() {
+	res := Transform[int]([]int{104, 101, 108, 108, 111}).
+		WithSteps(
+			Map(func(in int) (string, error) {
+				return string(rune(in)), nil
+			}),
+		).AsSlice()
+
+	fmt.Println(res)
+	// Output: [h e l l o]
+}
+
+func ExampleFilter() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps(
+			Filter(func(in int) (bool, error) {
+				return in%2 == 1, nil
+			}),
+		).AsSlice()
+
+	fmt.Println(res)
+	// Output: [1 3 5]
+}
+
+func ExampleTake() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps(
+			Take[int](3),
+		).AsSlice()
+
+	fmt.Println(res)
+	// Output: [1 2 3]
+}
+
+func ExampleTakeWhile() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps(
+			TakeWhile(func(in int) (bool, error) {
+				return in <= 3, nil
+			}),
+		).AsSlice()
+
+	fmt.Println(res)
+	// Output: [1 2 3]
+}
+
+func ExampleSkip() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps(
+			Skip[int](3),
+		).AsSlice()
+
+	fmt.Println(res)
+	// Output: [4 5]
+}
+
+func ExampleSkipWhile() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps(
+			SkipWhile(func(in int) (bool, error) {
+				return in <= 3, nil
+			}),
+		).AsSlice()
+
+	fmt.Println(res)
+	// Output: [4 5]
+}
+
+func ExampleDo() {
+	total := 0
+	res := Transform[int]([]int{1, 2, 3, 4, 5}).
+		WithSteps(
+			Do(func(in int) error {
+				total += in
+				return nil
+			}),
+		).AsSlice()
+
+	fmt.Printf("res: %v\ntotal: %d", res, total)
+	// Output:
+	// res: [1 2 3 4 5]
+	// total: 15
+}
+
+func ExampleLog() {
+	buf := bytes.NewBufferString("")
+
+	res := Transform[int]([]int{1, 2, 3}, WithLogWriter(buf)).
+		WithSteps(
+			Log("before filter"),
+			Filter(func(i int) (bool, error) {
+				return i%2 == 1, nil
+			}),
+			Log("after filter"),
+		).AsSlice()
+
+	logs := strings.ReplaceAll(buf.String(), " \n", "\n")
+	fmt.Printf("res: %v\nlogs: %s", res, logs)
+	// Output:
+	// res: [1 3]
+	// logs: before filter 	arg0: 1
+	// after filter 	arg0: 1
+	// before filter 	arg0: 2
+	// before filter 	arg0: 3
+	// after filter 	arg0: 3
+}
+
+func ExampleSplit() {
+	fmt.Println("see WithBranches")
+	// Output: see WithBranches
+}
+
+func ExampleWithBranches() {
+	res := Transform[int]([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}).
+		WithSteps(
+			Split(func(in int) (uint8, error) {
+				return uint8(in % 2), nil
+			}),
+			WithBranches[int](
+				Steps(
+					Map(func(in int) (string, error) {
+						return strconv.Itoa(-in), nil
+					}),
+				),
+				Steps(
+					Map(func(in int) (string, error) {
+						return strconv.Itoa(in * 10), nil
+					}),
+				),
+			),
+			Merge(),
+		).
+		AsSlice()
+
+	fmt.Printf("%#v", res)
+	// Output: []interface {}{"10", "-2", "30", "-4", "50", "-6", "70", "-8", "90", "-10"}
+}
+
+func ExampleMerge() {
+	fmt.Println("see WithBranches")
+	// Output: see WithBranches
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -287,4 +288,89 @@ func mustParseTime(s string) *time.Time {
 		panic(err)
 	}
 	return &t
+}
+
+func ExampleFromCsv() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+	reader := strings.NewReader(`
+		id,name
+		1,John Doe
+		2,Jane Doe`)
+
+	res := TransformFn[person](FromCsv[person](reader)).
+		WithSteps(
+			Map(func(in person) (string, error) {
+				return in.Name, nil
+			}),
+		).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [John Doe Jane Doe]
+}
+
+func ExampleFromStreamingCsv() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+	reader := strings.NewReader(`1,John Doe
+2,Jane Doe`)
+
+	res := TransformFn[person](FromStreamingCsv[person](reader, true)).
+		WithSteps(
+			Map(func(in person) (string, error) {
+				return in.Name, nil
+			}),
+		).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [John Doe Jane Doe]
+}
+
+func ExampleFromJson() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+	reader := strings.NewReader(`[
+		{"id":1,"name":"John Doe"},
+		{"id":2,"name":"Jane Doe"}
+		]`)
+
+	res := TransformFn[person](FromJson[person](reader)).
+		WithSteps(
+			Map(func(in person) (string, error) {
+				return in.Name, nil
+			}),
+		).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [John Doe Jane Doe]
+}
+
+func ExampleFromStreamingJson() {
+	type person struct {
+		ID   int    `csv:"id"`
+		Name string `csv:"name"`
+	}
+	reader := strings.NewReader(`
+		{"id":1,"name":"John Doe"}
+		{"id":2,"name":"Jane Doe"}`)
+
+	res := TransformFn[person](FromStreamingJson[person](reader)).
+		WithSteps(
+			Map(func(in person) (string, error) {
+				return in.Name, nil
+			}),
+		).
+		AsSlice()
+
+	fmt.Println(res)
+	// Output: [John Doe Jane Doe]
 }
