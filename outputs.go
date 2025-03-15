@@ -69,16 +69,10 @@ func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 	}
 }
 
-// _stepsTransformer_AsRange is only here for hack the documentation
-func _stepsTransformer_AsRange() iter.Seq[any] { return nil }
-
 // AsKeyValueRange is an alias for AsIndexedRange
 func (t stepsTransformer[T, IT]) AsKeyValueRange() iter.Seq2[any, any] {
 	return t.AsIndexedRange()
 }
-
-// _stepsTransformer_AsKeyValueRange is only here for hack the documentation
-func _stepsTransformer_AsKeyValueRange() iter.Seq2[any, any] { return nil }
 
 // AsIndexedRange returns the transformer output as a key-value iterator ready to be used by the range keyword
 func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
@@ -131,9 +125,6 @@ func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 	}
 }
 
-// _stepsTransformer_AsIndexedRange is only here for hack the documentation
-func _stepsTransformer_AsIndexedRange() iter.Seq2[any, any] { return nil }
-
 // AsMultiMap collects the transformer output having a [GroupBy] aggregator.
 func (t stepsTransformer[T, IT]) AsMultiMap() map[any][]any {
 	var acc any
@@ -159,9 +150,6 @@ func (t stepsTransformer[T, IT]) AsMultiMap() map[any][]any {
 	return res
 }
 
-// _stepsTransformer_AsMultiMap is only here for hack the documentation
-func _stepsTransformer_AsMultiMap() map[any][]any { return nil }
-
 // AsMap collects the transformer output into a map
 func (t stepsTransformer[T, IT]) AsMap() map[any]any {
 	res := map[any]any{}
@@ -170,9 +158,6 @@ func (t stepsTransformer[T, IT]) AsMap() map[any]any {
 	}
 	return res
 }
-
-// _stepsTransformer_AsMap is only here for hack the documentation
-func _stepsTransformer_AsMap() map[any]any { return nil }
 
 // AsSlice collects the transformer output into a slice
 func (t stepsTransformer[T, IT]) AsSlice() []any {
@@ -183,9 +168,6 @@ func (t stepsTransformer[T, IT]) AsSlice() []any {
 
 	return res
 }
-
-// _stepsTransformer_AsSlice is only here for hack the documentation
-func _stepsTransformer_AsSlice() []any { return nil }
 
 // AsCsv collects the transformer output into a CSV string
 func (t stepsTransformer[T, IT]) AsCsv() string {
@@ -208,9 +190,6 @@ func (t stepsTransformer[T, IT]) AsCsv() string {
 	return string(res)
 }
 
-// _stepsTransformer_AsCsv is only here for hack the documentation
-func _stepsTransformer_AsCsv() string { return "" }
-
 // ToStreamingCsv collects and writes the transformer output as a CSV
 func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
 	w := csv.NewWriter(writer)
@@ -229,9 +208,6 @@ func (t stepsTransformer[T, IT]) ToStreamingCsv(writer io.Writer) {
 	}
 }
 
-// _stepsTransformer_ToStreamingCsv is only here for hack the documentation
-func _stepsTransformer_ToStreamingCsv(writer io.Writer) {}
-
 // AsJson collects the transformer output into a JSON string
 func (t stepsTransformer[T, IT]) AsJson() string {
 	data := t.AsSlice()
@@ -241,9 +217,6 @@ func (t stepsTransformer[T, IT]) AsJson() string {
 	}
 	return string(res)
 }
-
-// _stepsTransformer_AsJson is only here for hack the documentation
-func _stepsTransformer_AsJson() string { return "" }
 
 // ToStreamingJson collects and writes the transformer output as a JSON
 func (t stepsTransformer[T, IT]) ToStreamingJson(writer io.Writer) {

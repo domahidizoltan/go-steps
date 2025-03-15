@@ -53,6 +53,7 @@ func buildOpts(options ...func(*TransformerOptions)) TransformerOptions {
 	opts := TransformerOptions{
 		Ctx:       context.Background(),
 		LogWriter: os.Stdout,
+		ChanSize:  100,
 	}
 	for _, withOption := range options {
 		withOption(&opts)
