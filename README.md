@@ -325,14 +325,41 @@ godoc -http=:6060
 ```
 
 ## Benchmarks
-TODO:
-- simple filter
-- transform with filter
-- simple filter, map, sum using struct
-- transform filter, map, sum using struct
-- simple json input, csv output
-- transform json input, csv output
+Since the library is using a lot more steps and reflection, it's obvious that it is slower than the native Go version.  
 
+As more complex the transformation chain gets, the difference gets bigger.  
 
-TODO: example doc tests
+Here are some benchmarks for reference:  
+- SimpleStep: using a simple step on a slice
+- MultipleSteps: using multiple three steps and an aggregation on a slice
+- CsvToJsonSteps: reading a CSV file and converting it to JSON while doing some minimal transformation on the data
+
+```bash
+goos: linux
+goarch: amd64
+cpu: AMD Ryzen 7 7840HS with Radeon 780M Graphics
+                  │ tmp/native.txt │            tmp/transformer.txt            │
+                  │     sec/op     │     sec/op      vs base                   │
+SimpleStep-16        23.23n ±  72%   1315.00n ± 60%   +5562.00% (p=0.000 n=10)
+MultipleSteps-16     22.12n ±   4%   2628.50n ± 30%  +11782.91% (p=0.000 n=10)
+CsvToJsonSteps-16    552.2n ± 110%   31099.0n ± 19%   +5532.35% (p=0.000 n=10)
+geomean              65.71n            4.755µ         +7136.48%
+
+                  │ tmp/native.txt │          tmp/transformer.txt           │
+                  │      B/op      │     B/op      vs base                  │
+SimpleStep-16       0.000Ki ± 0%     1.039Ki ± 0%          ? (p=0.000 n=10)
+MultipleSteps-16    0.000Ki ± 0%     1.391Ki ± 0%          ? (p=0.000 n=10)
+CsvToJsonSteps-16     440.0 ± 0%     26454.0 ± 0%  +5912.27% (p=0.000 n=10)
+geomean                          ¹   3.342Ki       ?
+¹ summaries must be >0 to compute geomean
+
+                  │ tmp/native.txt │           tmp/transformer.txt           │
+                  │   allocs/op    │  allocs/op    vs base                   │
+SimpleStep-16          0.00 ± 0%       13.00 ± 0%           ? (p=0.000 n=10)
+MultipleSteps-16       0.00 ± 0%       35.00 ± 0%           ? (p=0.000 n=10)
+CsvToJsonSteps-16     3.000 ± 0%     311.000 ± 0%  +10266.67% (p=0.000 n=10)
+geomean                          ¹     52.11       ?
+¹ summaries must be >0 to compute geomean
+```
+See the [benchmarks](https://github.com/domahidizoltan/go-steps/blob/master/test/benchmarks_test.go) for more details
 
