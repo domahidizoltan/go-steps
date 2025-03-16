@@ -20,6 +20,7 @@ type (
 		aggregator          ReducerFn
 		lastAggregatedValue *StepOutput
 		steps               []StepFn
+		stateResets         []func()
 	}
 
 	stepsTransformer[T any, IT inputType[T]] struct {
@@ -67,9 +68,19 @@ func (i input[T, IT]) With(steps StepsBranch) stepsTransformer[T, IT] {
 
 	t.input = i.data
 	t.steps = steps.Steps
+	for _, s := range steps.StepWrappers {
+		if s.Reset != nil {
+			t.stateResets = append(t.stateResets, s.Reset)
+		}
+	}
+
 	if steps.AggregatorWrapper != nil {
 		t.aggregator = steps.AggregatorWrapper.ReducerFn
+		if steps.AggregatorWrapper.Reset != nil {
+			t.stateResets = append(t.stateResets, steps.AggregatorWrapper.Reset)
+		}
 	}
+
 	return t
 }
 

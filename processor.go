@@ -40,7 +40,6 @@ func process[V any](val V, yield func(any) bool, transformer *transformer, isLas
 	if out.Error != nil {
 		return false, false, out.Error
 	}
-
 	aggOut := transformer.lastAggregatedValue
 	if aggOut != nil {
 		if aggOut.Error != nil {

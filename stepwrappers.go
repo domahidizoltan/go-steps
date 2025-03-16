@@ -78,6 +78,9 @@ func Take[IN0 any](count uint64) StepWrapper {
 			}
 		},
 		Validate: simpleFilterValidation[IN0],
+		Reset: func() {
+			counter = 0
+		},
 	}
 }
 
@@ -99,6 +102,9 @@ func TakeWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 			}
 		},
 		Validate: simpleFilterValidation[IN0],
+		Reset: func() {
+			skip = false
+		},
 	}
 }
 
@@ -117,6 +123,9 @@ func Skip[IN0 any](count uint64) StepWrapper {
 			}
 		},
 		Validate: simpleFilterValidation[IN0],
+		Reset: func() {
+			counter = 0
+		},
 	}
 }
 
@@ -138,6 +147,9 @@ func SkipWhile[IN0 any](fn func(in IN0) (bool, error)) StepWrapper {
 			}
 		},
 		Validate: simpleFilterValidation[IN0],
+		Reset: func() {
+			skip = true
+		},
 	}
 }
 

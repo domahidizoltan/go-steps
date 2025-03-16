@@ -26,6 +26,10 @@ func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 			return
 		}
 
+		for _, reset := range t.stateResets {
+			reset()
+		}
+
 		var terminated bool
 		var err error
 		switch in := any(t.input).(type) {
@@ -80,6 +84,10 @@ func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 		if t.error != nil {
 			handleErrWithTrName(t, t.error, t.options.ErrorHandler)
 			return
+		}
+
+		for _, reset := range t.stateResets {
+			reset()
 		}
 
 		var terminated bool
@@ -161,7 +169,7 @@ func (t stepsTransformer[T, IT]) AsMap() map[any]any {
 
 // AsSlice collects the transformer output into a slice
 func (t stepsTransformer[T, IT]) AsSlice() []any {
-	var res []any
+	res := []any{}
 	for v := range t.AsRange() {
 		res = append(res, v)
 	}

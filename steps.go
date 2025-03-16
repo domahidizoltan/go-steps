@@ -47,6 +47,7 @@ type (
 		Name     string                                            // name of the step
 		StepFn   StepFn                                            // the transformation step function
 		Validate func(prevStepArgTypes ArgTypes) (ArgTypes, error) // validation of the current step in the chain
+		Reset    func()                                            // reset the step state before processing
 	}
 
 	// ReducerWrapper is a container for an aggregation step
@@ -54,6 +55,7 @@ type (
 		Name      string                                            // name of the step
 		ReducerFn ReducerFn                                         // the aggregation step function
 		Validate  func(prevStepArgTypes ArgTypes) (ArgTypes, error) // validation of the aggregation step in the chain
+		Reset     func()                                            // reset the aggregation state before processing
 	}
 
 	// StepsBranch represents a sub-path of a branching transformation chain

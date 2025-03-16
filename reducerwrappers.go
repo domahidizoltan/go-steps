@@ -33,6 +33,9 @@ func GroupBy[IN0 any, OUT0 comparable, OUT1 any](fn func(in IN0) (OUT0, OUT1, er
 			}
 			return ArgTypes{reflect.TypeFor[OUT0](), reflect.TypeFor[OUT1]()}, nil
 		},
+		Reset: func() {
+			acc = map[OUT0][]OUT1{}
+		},
 	}
 }
 
@@ -62,6 +65,9 @@ func Fold[IN0 any](initValue IN0, reduceFn func(in1, in2 IN0) (IN0, error)) Redu
 				}
 			}
 			return ArgTypes{reflect.TypeFor[IN0]()}, nil
+		},
+		Reset: func() {
+			prevValue = initValue
 		},
 	}
 }
