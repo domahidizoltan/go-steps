@@ -26,10 +26,7 @@ func (t stepsTransformer[T, IT]) AsRange() iter.Seq[any] {
 			return
 		}
 
-		for _, reset := range t.stateResets {
-			reset()
-		}
-
+		t.resetStates()
 		var terminated bool
 		var err error
 		switch in := any(t.input).(type) {
@@ -86,10 +83,7 @@ func (t stepsTransformer[T, IT]) AsIndexedRange() iter.Seq2[any, any] {
 			return
 		}
 
-		for _, reset := range t.stateResets {
-			reset()
-		}
-
+		t.resetStates()
 		var terminated bool
 		var err error
 		switch in := any(t.input).(type) {

@@ -134,3 +134,9 @@ func (s *StepsBranch) Validate() error {
 
 	return s.Error
 }
+
+func (t transformer) resetStates() {
+	for _, reset := range t.stateResets {
+		reset()
+	}
+}
