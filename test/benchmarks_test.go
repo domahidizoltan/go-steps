@@ -9,6 +9,7 @@ import (
 
 	. "github.com/domahidizoltan/go-steps"
 	"github.com/jszwec/csvutil"
+	"github.com/samber/lo"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,24 @@ func BenchmarkNativeSimpleStep(b *testing.B) {
 			res = append(res, v)
 		}
 	}
+	assert.Equal(b, []int{2, 4, 6, 8, 10}, res)
+}
+
+func BenchmarkLoSimpleStep(b *testing.B) {
+	b.StopTimer()
+
+	var res []int
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
+	b.ReportAllocs()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		res = res[:0]
+		res = lo.Filter(input, func(v int, _ int) bool {
+			return v%2 == 0
+		})
+	}
+
 	assert.Equal(b, []int{2, 4, 6, 8, 10}, res)
 }
 
@@ -87,6 +106,28 @@ func BenchmarkNativeMultipleSteps(b *testing.B) {
 			sum += num
 		}
 		res = sum
+	}
+	assert.Equal(b, 28, res)
+}
+
+func BenchmarkLoMultipleSteps(b *testing.B) {
+	b.StopTimer()
+
+	var res int
+	input := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
+
+	b.ReportAllocs()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		skippedInput := input[3:]
+		mappedInput := lo.Map(skippedInput, func(item string, _ int) int {
+			num, _ := strconv.Atoi(item)
+			return num
+		})
+		filteredInput := lo.Filter(mappedInput, func(v int, _ int) bool {
+			return v%2 == 0
+		})
+		res = lo.Sum(filteredInput)
 	}
 	assert.Equal(b, 28, res)
 }
@@ -170,6 +211,56 @@ func BenchmarkNativeCsvToJsonSteps(b *testing.B) {
 
 			transformRes = append(transformRes, s)
 		}
+
+		resBytes, err := json.Marshal(transformRes)
+		if err != nil {
+			panic(err)
+		}
+		res = string(resBytes)
+	}
+
+	assert.Equal(b, expectedJson, res)
+}
+
+func BenchmarkLoCsvToJsonSteps(b *testing.B) {
+	b.StopTimer()
+
+	type salary struct {
+		ID         int    `csv:"ID" json:"id"`
+		Name       string `csv:"Name" json:"name"`
+		Age        int    `csv:"Age" json:"age"`
+		Department string `csv:"Department" json:"department"`
+		Salary     int    `csv:"Salary" json:"salary"`
+		City       string `csv:"City" json:"city"`
+	}
+
+	reader, err := os.Open("testdata/salaries.csv")
+	if err != nil {
+		panic(err)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil && err != io.EOF {
+		panic(err)
+	}
+
+	var rows []salary
+	var transformRes []salary
+	res := ""
+
+	b.ReportAllocs()
+	b.StartTimer()
+	if err := csvutil.Unmarshal(data, &rows); err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		transformRes = transformRes[:0]
+
+		filteredRows := lo.Filter(rows, func(item salary, _ int) bool {
+			return item.City == "New York" && item.Department == "Engineering"
+		})
+
+		transformRes = append(transformRes, filteredRows[:2]...)
 
 		resBytes, err := json.Marshal(transformRes)
 		if err != nil {

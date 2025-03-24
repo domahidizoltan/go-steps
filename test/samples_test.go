@@ -101,7 +101,7 @@ func TestValidation(t *testing.T) {
 		With(steps).
 		AsSlice()
 
-	assert.Nil(t, res)
+	assert.Empty(t, res)
 }
 
 func TestErrorHandler(t *testing.T) {

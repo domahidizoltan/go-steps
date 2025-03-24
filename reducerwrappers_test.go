@@ -100,7 +100,7 @@ func TestFold_Failure(t *testing.T) {
 			}))).
 		AsSlice()
 
-	assert.Nil(t, actual)
+	assert.Empty(t, actual)
 }
 
 func TestFold_Validate(t *testing.T) {
