@@ -3,6 +3,7 @@ package steps
 import (
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 func getValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, error) {
@@ -31,12 +32,31 @@ func getValidatedSteps[T any](stepWrappers []StepWrapper) ([]StepFn, ArgTypes, e
 	return validSteps, outTypes, nil
 }
 
+func (so *StepOutput) Reset() {
+	for i := 0; i < maxArgs; i++ {
+		so.Args[i] = nil
+	}
+	so.ArgsLen = 0
+	so.Error = nil
+	so.Skip = false
+}
+
+var poolOut sync.Pool = sync.Pool{
+	New: func() any {
+		return &StepOutput{}
+	},
+}
+
 func process[V any](val V, yield func(any) bool, transformer *transformer, isLastItem bool) (bool, bool, error) {
 	if transformer == nil {
 		return false, !yield(val), nil
 	}
 
 	out, skipped := getProcessResult(val, transformer)
+	defer func() {
+		out.Reset()
+		poolOut.Put(out)
+	}()
 	if out.Error != nil {
 		return false, false, out.Error
 	}
@@ -62,6 +82,10 @@ func processIndexed[V any](key any, val V, yield func(any, any) bool, transforme
 	}
 
 	out, skipped := getProcessResult(val, transformer)
+	defer func() {
+		out.Reset()
+		poolOut.Put(out)
+	}()
 	if out.Error != nil {
 		return false, false, out.Error
 	}
@@ -89,12 +113,12 @@ func processIndexed[V any](key any, val V, yield func(any, any) bool, transforme
 	return false, !yield(idx, v), nil
 }
 
-func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool) {
+func getProcessResult[V any](val V, transformer *transformer) (*StepOutput, bool) {
 	if transformer == nil || (transformer.steps == nil && transformer.aggregator == nil) {
-		return StepOutput{
-			Args:    [4]any{val},
-			ArgsLen: 1,
-		}, false
+		out := poolOut.Get().(*StepOutput)
+		out.Args = [4]any{val}
+		out.ArgsLen = 1
+		return out, false
 	}
 
 	in := StepInput{
@@ -104,17 +128,15 @@ func getProcessResult[V any](val V, transformer *transformer) (StepOutput, bool)
 	}
 
 	var skipped bool
-	var out StepOutput
+	out := poolOut.Get().(*StepOutput)
 iterSteps:
 	for _, fn := range transformer.steps {
 		select {
 		case <-transformer.options.Ctx.Done():
-			out = StepOutput{
-				Error: transformer.options.Ctx.Err(),
-			}
+			out.Error = transformer.options.Ctx.Err()
 			return out, false
 		default:
-			out = fn(in)
+			*out = fn(in)
 			if out.Skip || out.Error != nil {
 				skipped = true
 				break iterSteps
@@ -129,8 +151,8 @@ iterSteps:
 	}
 
 	if !skipped && transformer.aggregator != nil {
-		out = transformer.aggregator(in)
-		transformer.lastAggregatedValue = &out
+		*out = transformer.aggregator(in)
+		transformer.lastAggregatedValue = out
 		skipped = true
 	}
 

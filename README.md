@@ -338,27 +338,27 @@ Here are some benchmarks for reference:
 goos: linux
 goarch: amd64
 cpu: AMD Ryzen 7 7840HS with Radeon 780M Graphics
-                  │ tmp/native.txt │               tmp/lo.txt               │            tmp/transformer.txt            │
-                  │     sec/op     │    sec/op      vs base                 │     sec/op      vs base                   │
-SimpleStep-16        11.05n ± 113%    62.99n ± 13%  +470.12% (p=0.000 n=10)   1502.00n ± 30%  +13493.38% (p=0.000 n=10)
-MultipleSteps-16     24.22n ±   3%   141.20n ±  9%  +482.99% (p=0.000 n=10)   1773.50n ± 16%   +7222.46% (p=0.000 n=10)
-CsvToJsonSteps-16    565.4n ±   3%   3764.0n ±  1%  +565.72% (p=0.000 n=10)   27771.5n ± 19%   +4811.83% (p=0.000 n=10)
-geomean              53.29n           322.3n        +504.84%                    4.198µ         +7777.88%
+                  │ tmp/native.txt │               tmp/lo.txt               │           tmp/transformer.txt           │
+                  │     sec/op     │    sec/op      vs base                 │    sec/op      vs base                  │
+SimpleStep-16          6.544n ± 2%   44.820n ± 19%  +584.90% (p=0.000 n=10)   534.750n ± 3%  +8071.61% (p=0.000 n=10)
+MultipleSteps-16       21.79n ± 0%    88.43n ±  1%  +305.83% (p=0.000 n=10)   1392.00n ± 1%  +6288.25% (p=0.000 n=10)
+CsvToJsonSteps-16      522.6n ± 3%   2891.0n ± 20%  +453.20% (p=0.000 n=10)   13404.5n ± 1%  +2464.96% (p=0.000 n=10)
+geomean                42.08n         225.4n        +435.73%                    2.153µ       +5015.92%
 
                   │ tmp/native.txt │              tmp/lo.txt               │          tmp/transformer.txt           │
                   │      B/op      │    B/op      vs base                  │     B/op      vs base                  │
-SimpleStep-16          0.00 ± 0%      80.00 ± 0%          ? (p=0.000 n=10)   1064.00 ± 0%          ? (p=0.000 n=10)
-MultipleSteps-16        0.0 ± 0%      128.0 ± 0%          ? (p=0.000 n=10)    1424.0 ± 0%          ? (p=0.000 n=10)
-CsvToJsonSteps-16     440.0 ± 0%     8639.0 ± 0%  +1863.41% (p=0.000 n=10)   26454.5 ± 0%  +5912.39% (p=0.000 n=10)
-geomean                          ¹    445.6       ?                          3.342Ki       ?
+SimpleStep-16          0.00 ± 0%      80.00 ± 0%          ? (p=0.000 n=10)    104.00 ± 0%          ? (p=0.000 n=10)
+MultipleSteps-16        0.0 ± 0%      128.0 ± 0%          ? (p=0.000 n=10)     464.0 ± 0%          ? (p=0.000 n=10)
+CsvToJsonSteps-16     440.0 ± 0%     8639.0 ± 0%  +1863.41% (p=0.000 n=10)   16856.0 ± 0%  +3730.91% (p=0.000 n=10)
+geomean                          ¹    445.6       ?                            933.5       ?
 ¹ summaries must be >0 to compute geomean
 
-                  │ tmp/native.txt │             tmp/lo.txt             │           tmp/transformer.txt           │
-                  │   allocs/op    │ allocs/op   vs base                │  allocs/op    vs base                   │
-SimpleStep-16         0.000 ± 0%     1.000 ± 0%        ? (p=0.000 n=10)    13.000 ± 0%           ? (p=0.000 n=10)
-MultipleSteps-16      0.000 ± 0%     2.000 ± 0%        ? (p=0.000 n=10)    35.000 ± 0%           ? (p=0.000 n=10)
-CsvToJsonSteps-16     3.000 ± 0%     4.000 ± 0%  +33.33% (p=0.000 n=10)   311.000 ± 0%  +10266.67% (p=0.000 n=10)
-geomean                          ¹   2.000       ?                          52.11       ?
+                  │ tmp/native.txt │             tmp/lo.txt             │          tmp/transformer.txt           │
+                  │   allocs/op    │ allocs/op   vs base                │  allocs/op    vs base                  │
+SimpleStep-16         0.000 ± 0%     1.000 ± 0%        ? (p=0.000 n=10)     3.000 ± 0%          ? (p=0.000 n=10)
+MultipleSteps-16      0.000 ± 0%     2.000 ± 0%        ? (p=0.000 n=10)    25.000 ± 0%          ? (p=0.000 n=10)
+CsvToJsonSteps-16     3.000 ± 0%     4.000 ± 0%  +33.33% (p=0.000 n=10)   211.000 ± 0%  +6933.33% (p=0.000 n=10)
+geomean                          ¹   2.000       ?                          25.11       ?
 ¹ summaries must be >0 to compute geomean
 ```
 See the [benchmarks](https://github.com/domahidizoltan/go-steps/blob/master/test/benchmarks_test.go) for more details
